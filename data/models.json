@@ -1,0 +1,31 @@
+[
+    {
+        "id": "ec9cf896db873945",
+        "user_id": "admin",
+        "title": "Sample Test Cube",
+        "description": "A simple test cube to demonstrate the 3D viewer functionality. This is a basic geometric shape that can be used for calibration prints.",
+        "category": "other",
+        "tags": [
+            "test",
+            "cube",
+            "calibration",
+            "sample"
+        ],
+        "filename": "sample_cube.stl",
+        "filesize": 1423,
+        "thumbnail": null,
+        "images": [],
+        "license": "CC0",
+        "print_settings": {
+            "layer_height": "0.2mm",
+            "infill": "20%",
+            "supports": "None",
+            "material": "PLA"
+        },
+        "downloads": 0,
+        "likes": 0,
+        "views": 0,
+        "created_at": "2026-01-13 23:43:58",
+        "updated_at": "2026-01-13 23:43:58"
+    }
+]

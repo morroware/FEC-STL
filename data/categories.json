@@ -1,0 +1,58 @@
+[
+    {
+        "id": "arcade-parts",
+        "name": "Arcade Parts",
+        "icon": "fa-gamepad",
+        "description": "Buttons, joysticks, bezels, and arcade cabinet components",
+        "count": 0
+    },
+    {
+        "id": "redemption",
+        "name": "Redemption Games",
+        "icon": "fa-ticket",
+        "description": "Parts for ticket and prize redemption machines",
+        "count": 0
+    },
+    {
+        "id": "signage",
+        "name": "Signage & Displays",
+        "icon": "fa-sign",
+        "description": "Signs, toppers, marquees, and display pieces",
+        "count": 0
+    },
+    {
+        "id": "coin-op",
+        "name": "Coin-Op & Tokens",
+        "icon": "fa-coins",
+        "description": "Coin mechanisms, token holders, and cash handling",
+        "count": 0
+    },
+    {
+        "id": "maintenance",
+        "name": "Maintenance Tools",
+        "icon": "fa-wrench",
+        "description": "Tools and jigs for FEC maintenance",
+        "count": 0
+    },
+    {
+        "id": "prizes",
+        "name": "Prize Displays",
+        "icon": "fa-gift",
+        "description": "Prize shelving, holders, and display units",
+        "count": 0
+    },
+    {
+        "id": "accessories",
+        "name": "Accessories",
+        "icon": "fa-puzzle-piece",
+        "description": "Cup holders, phone stands, and misc accessories",
+        "count": 0
+    },
+    {
+        "id": "other",
+        "name": "Other",
+        "icon": "fa-cube",
+        "description": "Miscellaneous FEC-related prints",
+        "count": 1
+    }
+]

@@ -1,0 +1,16 @@
+[
+    {
+        "id": "admin",
+        "username": "admin",
+        "email": "admin@fecvault.com",
+        "password": "$2y$10$2JO4C8x9iRK8LMnJGQl8Nu5U1PMVxrgFzNwGHFGXl.uSiQBrs7zcq",
+        "is_admin": true,
+        "avatar": null,
+        "bio": "Site Administrator",
+        "location": "HQ",
+        "created_at": "2026-01-13 23:43:58",
+        "model_count": 1,
+        "download_count": 0,
+        "favorites": []
+    }
+]
