@@ -206,7 +206,7 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                             <?php $category = getCategory($model['category']); ?>
                             <div class="card model-card">
                                 <div class="model-card-preview">
-                                    <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
+                                    <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($model['filename']) ?>">
                                         <i class="fas fa-cube"></i>
                                     </div>
                                     <div class="model-card-overlay">
@@ -257,7 +257,7 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                                 <?php $category = getCategory($model['category']); ?>
                                 <div class="card model-card">
                                     <div class="model-card-preview">
-                                        <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
+                                        <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($model['filename']) ?>">
                                             <i class="fas fa-cube"></i>
                                         </div>
                                         <div class="model-card-overlay">

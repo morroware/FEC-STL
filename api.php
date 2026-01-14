@@ -192,15 +192,23 @@ switch ($action) {
         }
         
         // Handle file upload
-        if (!isset($_FILES['stl_file']) || $_FILES['stl_file']['error'] !== UPLOAD_ERR_OK) {
+        $uploadKey = null;
+        if (isset($_FILES['model_file']) && $_FILES['model_file']['error'] === UPLOAD_ERR_OK) {
+            $uploadKey = 'model_file';
+        } elseif (isset($_FILES['stl_file']) && $_FILES['stl_file']['error'] === UPLOAD_ERR_OK) {
+            $uploadKey = 'stl_file';
+        }
+
+        if (!$uploadKey) {
             jsonResponse(['success' => false, 'error' => 'No file uploaded'], 400);
         }
-        
-        $file = $_FILES['stl_file'];
+
+        $file = $_FILES[$uploadKey];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        
-        if ($ext !== 'stl') {
-            jsonResponse(['success' => false, 'error' => 'Only STL files are allowed'], 400);
+        $allowedExtensions = ['stl', 'obj', 'ply', 'gltf', 'glb', '3mf'];
+
+        if (!in_array($ext, $allowedExtensions, true)) {
+            jsonResponse(['success' => false, 'error' => 'Unsupported format. Allowed: ' . strtoupper(implode(', ', $allowedExtensions))], 400);
         }
         
         if ($file['size'] > MAX_FILE_SIZE) {
@@ -319,10 +327,16 @@ switch ($action) {
             updateUser($model['user_id'], ['download_count' => ($author['download_count'] ?? 0) + 1]);
         }
         
+        $downloadFile = $model['filename'];
+        if (!empty($model['files']) && is_array($model['files'])) {
+            $downloadFile = $model['files'][0]['filename'] ?? $downloadFile;
+        }
+        $downloadExt = strtolower(pathinfo($downloadFile, PATHINFO_EXTENSION)) ?: 'stl';
+
         jsonResponse([
             'success' => true,
-            'download_url' => 'uploads/' . $model['filename'],
-            'filename' => $model['title'] . '.stl'
+            'download_url' => 'uploads/' . $downloadFile,
+            'filename' => $model['title'] . '.' . $downloadExt
         ]);
         break;
         
