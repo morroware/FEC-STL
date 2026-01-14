@@ -88,6 +88,15 @@ foreach ($recentModels as $index => $model) {
                     <input type="text" name="q" placeholder="Search for arcade parts, coin-op repairs, signage...">
                     <button type="submit"><i class="fas fa-search"></i></button>
                 </form>
+
+                <div class="hero-actions">
+                    <a href="browse.php" class="btn btn-primary btn-lg">
+                        <i class="fas fa-compass"></i> Browse Models
+                    </a>
+                    <a href="#recent-models" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-clock"></i> Recent Uploads
+                    </a>
+                </div>
                 
                 <!-- Stats -->
                 <div class="hero-stats">
@@ -133,7 +142,7 @@ foreach ($recentModels as $index => $model) {
         </section>
 
         <!-- Recent Models Section -->
-        <section class="container">
+        <section class="container" id="recent-models">
             <div class="section-header">
                 <h2 class="section-title">
                     <i class="fas fa-clock"></i>
