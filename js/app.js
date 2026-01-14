@@ -967,9 +967,26 @@ class ThumbnailViewer {
             case 'gltf':
             case 'glb':
                 return this.loadGLTF();
+            case '3mf':
+                return this.load3MF();
             default:
                 return this.loadSTL();
         }
+    }
+
+    load3MF() {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.ThreeMFLoader();
+            loader.load(
+                this.url,
+                (object) => {
+                    this.processModel(object);
+                    resolve();
+                },
+                undefined,
+                reject
+            );
+        });
     }
 
     loadSTL() {

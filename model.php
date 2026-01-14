@@ -109,19 +109,21 @@ foreach ($relatedModels as $index => $rm) {
                     ?>
 
                     <?php
-                    // Check if model has a photo
-                    $hasPhoto = !empty($model['photo']);
-                    $photoUrl = $hasPhoto ? 'uploads/' . $model['photo'] : null;
+                    // Get photos array (support both old single-photo and new multi-photo format)
+                    $photos = $model['photos'] ?? ($model['photo'] ? [$model['photo']] : []);
+                    $hasPhotos = !empty($photos);
+                    $photoCount = count($photos);
+                    $primaryDisplay = $model['primary_display'] ?? 'auto';
                     ?>
 
-                    <?php if ($hasPhoto): ?>
+                    <?php if ($hasPhotos): ?>
                     <!-- View Mode Toggle -->
                     <div class="view-mode-toggle">
                         <button type="button" class="view-mode-btn active" data-mode="3d">
                             <i class="fas fa-cube"></i> 3D View
                         </button>
                         <button type="button" class="view-mode-btn photo-mode" data-mode="photo">
-                            <i class="fas fa-camera"></i> Photo
+                            <i class="fas fa-camera"></i> Photo<?= $photoCount > 1 ? "s ($photoCount)" : '' ?>
                         </button>
                     </div>
                     <?php endif; ?>
@@ -146,13 +148,33 @@ foreach ($relatedModels as $index => $rm) {
                     </div>
                     <?php endif; ?>
 
-                    <?php if ($hasPhoto): ?>
+                    <?php if ($hasPhotos): ?>
                     <!-- Photo Gallery View -->
                     <div class="model-photo-gallery" id="photo-gallery">
-                        <img src="<?= sanitize($photoUrl) ?>" alt="<?= sanitize($model['title']) ?> - Printed Model">
-                        <div class="photo-badge" style="position: absolute; top: 16px; right: 16px;">
-                            <i class="fas fa-camera"></i> Printed Model
+                        <div class="photo-main">
+                            <img id="photo-main-img" src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($model['title']) ?> - Printed Model">
+                            <div class="photo-badge">
+                                <i class="fas fa-camera"></i> Printed Model
+                            </div>
+                            <?php if ($photoCount > 1): ?>
+                            <button type="button" class="photo-nav photo-nav-prev" id="photo-prev">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button type="button" class="photo-nav photo-nav-next" id="photo-next">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <div class="photo-counter" id="photo-counter">1 / <?= $photoCount ?></div>
+                            <?php endif; ?>
                         </div>
+                        <?php if ($photoCount > 1): ?>
+                        <div class="photo-thumbnails" id="photo-thumbnails">
+                            <?php foreach ($photos as $idx => $photo): ?>
+                            <button type="button" class="photo-thumb-btn<?= $idx === 0 ? ' active' : '' ?>" data-index="<?= $idx ?>" data-url="uploads/<?= sanitize($photo) ?>">
+                                <img src="uploads/<?= sanitize($photo) ?>" alt="Photo <?= $idx + 1 ?>">
+                            </button>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
 
@@ -544,8 +566,9 @@ foreach ($relatedModels as $index => $rm) {
             'original_name' => $f['original_name'] ?? pathinfo($f['filename'], PATHINFO_FILENAME)
         ], $files)) ?>;
 
-        // Model photo URL (if available)
-        const modelPhotoUrl = <?= json_encode($photoUrl) ?>;
+        // Model photos array
+        const modelPhotos = <?= json_encode(array_map(fn($p) => 'uploads/' . $p, $photos)) ?>;
+        let currentPhotoIndex = 0;
 
         // Initialize after DOM ready
         document.addEventListener('DOMContentLoaded', () => {
@@ -582,6 +605,63 @@ foreach ($relatedModels as $index => $rm) {
                     }
                 });
             });
+
+            // Photo gallery navigation
+            if (modelPhotos.length > 1) {
+                const photoMainImg = document.getElementById('photo-main-img');
+                const photoCounter = document.getElementById('photo-counter');
+                const photoThumbnails = document.getElementById('photo-thumbnails');
+                const photoPrev = document.getElementById('photo-prev');
+                const photoNext = document.getElementById('photo-next');
+
+                function showPhoto(index) {
+                    if (index < 0) index = modelPhotos.length - 1;
+                    if (index >= modelPhotos.length) index = 0;
+                    currentPhotoIndex = index;
+
+                    // Update main image with fade
+                    photoMainImg.style.opacity = '0';
+                    setTimeout(() => {
+                        photoMainImg.src = modelPhotos[index];
+                        photoMainImg.style.opacity = '1';
+                    }, 150);
+
+                    // Update counter
+                    if (photoCounter) {
+                        photoCounter.textContent = `${index + 1} / ${modelPhotos.length}`;
+                    }
+
+                    // Update thumbnail active state
+                    if (photoThumbnails) {
+                        photoThumbnails.querySelectorAll('.photo-thumb-btn').forEach((btn, i) => {
+                            btn.classList.toggle('active', i === index);
+                        });
+                    }
+                }
+
+                if (photoPrev) {
+                    photoPrev.addEventListener('click', () => showPhoto(currentPhotoIndex - 1));
+                }
+                if (photoNext) {
+                    photoNext.addEventListener('click', () => showPhoto(currentPhotoIndex + 1));
+                }
+
+                if (photoThumbnails) {
+                    photoThumbnails.addEventListener('click', (e) => {
+                        const btn = e.target.closest('.photo-thumb-btn');
+                        if (btn) {
+                            showPhoto(parseInt(btn.dataset.index));
+                        }
+                    });
+                }
+
+                // Keyboard navigation for gallery
+                document.addEventListener('keydown', (e) => {
+                    if (!photoGallery || !photoGallery.classList.contains('active')) return;
+                    if (e.key === 'ArrowLeft') showPhoto(currentPhotoIndex - 1);
+                    if (e.key === 'ArrowRight') showPhoto(currentPhotoIndex + 1);
+                });
+            }
 
             // File tab switching (for multi-file models)
             const fileTabs = document.getElementById('model-file-tabs');

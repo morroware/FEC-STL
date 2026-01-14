@@ -319,6 +319,15 @@ function createModel(array $data): ?string {
         ]];
     }
 
+    // Handle multiple photos
+    $photos = [];
+    if (!empty($data['photos'])) {
+        $photos = $data['photos'];
+    } elseif (!empty($data['photo'])) {
+        // Single photo - convert to array
+        $photos = [$data['photo']];
+    }
+
     $model = [
         'id' => $id,
         'user_id' => $data['user_id'],
@@ -332,6 +341,9 @@ function createModel(array $data): ?string {
         'file_count' => count($files),
         'thumbnail' => $data['thumbnail'] ?? null,
         'images' => $data['images'] ?? [],
+        'photos' => $photos, // Array of photo filenames
+        'photo' => $photos[0] ?? null, // Primary photo for backwards compat
+        'primary_display' => $data['primary_display'] ?? 'auto', // 'auto', 'photo', or file index
         'license' => $data['license'] ?? 'CC BY-NC',
         'print_settings' => $data['print_settings'] ?? [],
         'downloads' => 0,
