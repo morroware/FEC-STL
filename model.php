@@ -244,55 +244,6 @@ foreach ($relatedModels as $index => $rm) {
                                 </div>
                             </div>
 
-                            <!-- Material Selector -->
-                            <div class="viewer-material-picker">
-                                <button class="material-picker-btn" id="material-picker-btn" title="Material Finish">
-                                    <i class="fas fa-gem"></i>
-                                </button>
-                                <div class="material-panel" id="material-panel">
-                                    <div class="palette-header">
-                                        <span class="palette-title"><i class="fas fa-gem"></i> Material Finish</span>
-                                    </div>
-                                    <div class="material-grid">
-                                        <button class="material-btn active" data-material="default" title="Default">
-                                            <div class="material-preview default"></div>
-                                            <span>Default</span>
-                                        </button>
-                                        <button class="material-btn" data-material="pla" title="PLA - Matte plastic">
-                                            <div class="material-preview pla"></div>
-                                            <span>PLA</span>
-                                        </button>
-                                        <button class="material-btn" data-material="abs" title="ABS - Semi-gloss plastic">
-                                            <div class="material-preview abs"></div>
-                                            <span>ABS</span>
-                                        </button>
-                                        <button class="material-btn" data-material="petg" title="PETG - Glossy clear plastic">
-                                            <div class="material-preview petg"></div>
-                                            <span>PETG</span>
-                                        </button>
-                                        <button class="material-btn" data-material="resin" title="Resin - Ultra smooth glossy">
-                                            <div class="material-preview resin"></div>
-                                            <span>Resin</span>
-                                        </button>
-                                        <button class="material-btn" data-material="silk" title="Silk PLA - Shiny metallic">
-                                            <div class="material-preview silk"></div>
-                                            <span>Silk</span>
-                                        </button>
-                                        <button class="material-btn" data-material="metal" title="Metal - Full metallic finish">
-                                            <div class="material-preview metal"></div>
-                                            <span>Metal</span>
-                                        </button>
-                                        <button class="material-btn" data-material="matte" title="Matte - No reflections">
-                                            <div class="material-preview matte"></div>
-                                            <span>Matte</span>
-                                        </button>
-                                        <button class="material-btn" data-material="glow" title="Glow - Emissive effect">
-                                            <div class="material-preview glow"></div>
-                                            <span>Glow</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="viewer-canvas" id="main-viewer"
@@ -355,12 +306,22 @@ foreach ($relatedModels as $index => $rm) {
                         </div>
                     <?php endif; ?>
 
+                    <?php
+                    $printSettings = [];
+                    if (!empty($model['print_settings']) && is_array($model['print_settings'])) {
+                        $printSettings = array_filter(
+                            $model['print_settings'],
+                            fn($key) => $key !== 'material',
+                            ARRAY_FILTER_USE_KEY
+                        );
+                    }
+                    ?>
                     <!-- Print Settings -->
-                    <?php if (!empty($model['print_settings'])): ?>
+                    <?php if (!empty($printSettings)): ?>
                         <div class="card" style="margin-top: 24px; padding: 24px;">
                             <h3 style="margin-bottom: 12px;">Print Settings</h3>
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                                <?php foreach ($model['print_settings'] as $key => $value): ?>
+                                <?php foreach ($printSettings as $key => $value): ?>
                                     <div>
                                         <span style="color: var(--text-muted); font-size: 0.85rem;"><?= ucfirst(str_replace('_', ' ', $key)) ?></span>
                                         <div style="font-weight: 500;"><?= sanitize($value) ?></div>
@@ -697,15 +658,10 @@ foreach ($relatedModels as $index => $rm) {
             const customColorInput = document.getElementById('custom-color-input');
             const applyCustomColor = document.getElementById('apply-custom-color');
 
-            // Material picker
-            const materialBtn = document.getElementById('material-picker-btn');
-            const materialPanel = document.getElementById('material-panel');
-
             if (colorBtn && colorPalette) {
                 colorBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     colorPalette.classList.toggle('active');
-                    materialPanel?.classList.remove('active');
                 });
 
                 colorPalette.addEventListener('click', (e) => {
@@ -754,40 +710,6 @@ foreach ($relatedModels as $index => $rm) {
                 document.addEventListener('click', (e) => {
                     if (!colorPalette.contains(e.target) && e.target !== colorBtn) {
                         colorPalette.classList.remove('active');
-                    }
-                });
-            }
-
-            // Material picker
-            if (materialBtn && materialPanel) {
-                materialBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    materialPanel.classList.toggle('active');
-                    colorPalette?.classList.remove('active');
-                });
-
-                materialPanel.querySelectorAll('.material-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        const material = btn.dataset.material;
-
-                        // Update active state
-                        materialPanel.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-
-                        // Apply material
-                        if (mainViewer && mainViewer.setMaterialPreset) {
-                            mainViewer.setMaterialPreset(material);
-                            Toast.success(`${btn.querySelector('span').textContent} finish applied!`);
-                        }
-
-                        materialPanel.classList.remove('active');
-                    });
-                });
-
-                // Close panel when clicking outside
-                document.addEventListener('click', (e) => {
-                    if (!materialPanel.contains(e.target) && e.target !== materialBtn) {
-                        materialPanel.classList.remove('active');
                     }
                 });
             }
