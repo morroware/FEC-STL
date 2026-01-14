@@ -213,19 +213,47 @@ $user = getCurrentUser();
                     </div>
                 </div>
 
+                <!-- Upload Summary -->
+                <div id="upload-summary" class="upload-summary" style="display: none;">
+                    <div class="upload-summary-icon">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="upload-summary-info">
+                        <div class="upload-summary-title">Files Ready to Upload</div>
+                        <div class="upload-summary-details">
+                            <span><i class="fas fa-file"></i> <span id="summary-count">0</span> files</span>
+                            <span><i class="fas fa-database"></i> <span id="summary-size">0</span> MB total</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- File List -->
                 <div id="file-list-container" class="form-group" style="display: none;">
-                    <label class="form-label">Selected Files (<span id="file-count">0</span>)</label>
+                    <div class="file-list-header">
+                        <label class="form-label">Selected Files (<span id="file-count">0</span>)</label>
+                        <button type="button" class="clear-files-btn" id="clear-files-btn">
+                            <i class="fas fa-times"></i> Clear All
+                        </button>
+                    </div>
                     <div id="file-list" class="file-list"></div>
                 </div>
 
                 <!-- 3D Preview -->
                 <div id="preview-container" class="form-group" style="display: none;">
-                    <label class="form-label">Preview</label>
+                    <label class="form-label preview-label">
+                        <span>3D Preview</span>
+                        <span class="preview-status">— Click a file to preview</span>
+                    </label>
                     <div id="file-tabs" class="file-tabs"></div>
                     <div class="viewer-container" style="height: 300px;">
                         <div class="viewer-canvas" id="upload-preview"></div>
                     </div>
+                </div>
+
+                <!-- Upload Instructions -->
+                <div id="upload-instructions" class="upload-instructions" style="display: none;">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Fill in the details below and click <strong>"Upload Model"</strong> to complete the upload.</span>
                 </div>
 
                 <!-- Title -->
@@ -370,10 +398,48 @@ $user = getCurrentUser();
         const fileList = document.getElementById('file-list');
         const fileTabs = document.getElementById('file-tabs');
         const fileCountSpan = document.getElementById('file-count');
+        const uploadSummary = document.getElementById('upload-summary');
+        const summaryCount = document.getElementById('summary-count');
+        const summarySize = document.getElementById('summary-size');
+        const uploadInstructions = document.getElementById('upload-instructions');
+        const clearFilesBtn = document.getElementById('clear-files-btn');
+        const previewStatus = document.querySelector('.preview-status');
 
         let viewer = null;
         let uploadedFiles = [];
         let currentPreviewIndex = 0;
+
+        // Clear files button
+        clearFilesBtn.addEventListener('click', () => {
+            clearAllFiles();
+        });
+
+        function clearAllFiles() {
+            uploadedFiles = [];
+            fileInput.value = '';
+
+            // Hide all feedback elements
+            uploadSummary.style.display = 'none';
+            fileListContainer.style.display = 'none';
+            previewContainer.style.display = 'none';
+            uploadInstructions.style.display = 'none';
+
+            // Reset dropzone
+            dropzone.classList.remove('has-files');
+            dropzone.querySelector('.file-upload-text').innerHTML = `
+                <strong>Click to upload</strong> or drag and drop<br>
+                <small>Supported: STL, OBJ, PLY, GLTF, GLB, 3MF (max 50MB each)</small>
+            `;
+            dropzone.querySelector('.file-upload-icon').innerHTML = '<i class="fas fa-cloud-upload-alt"></i>';
+
+            // Dispose viewer
+            if (viewer) {
+                viewer.dispose();
+                viewer = null;
+            }
+
+            Toast.info('Files cleared');
+        }
 
         // Drag and drop styling
         ['dragenter', 'dragover'].forEach(event => {
@@ -429,15 +495,27 @@ $user = getCurrentUser();
             if (validFiles.length === 0) return;
 
             uploadedFiles = validFiles;
+            const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+
+            // Update summary section
+            summaryCount.textContent = validFiles.length;
+            summarySize.textContent = totalSizeMB;
+            uploadSummary.style.display = 'flex';
+
+            // Show upload instructions
+            uploadInstructions.style.display = 'flex';
+
             updateFileList();
             updateFileTabs();
             showPreview(0);
 
-            // Update dropzone text
+            // Update dropzone to success state
+            dropzone.classList.add('has-files');
             const fileText = validFiles.length === 1 ? '1 file' : `${validFiles.length} files`;
+            dropzone.querySelector('.file-upload-icon').innerHTML = '<i class="fas fa-check-circle"></i>';
             dropzone.querySelector('.file-upload-text').innerHTML = `
-                <strong>${fileText} selected</strong><br>
-                <small>Total: ${(totalSize / 1024 / 1024).toFixed(2)} MB</small>
+                <strong style="color: var(--success);">${fileText} ready to upload</strong><br>
+                <small>Total size: ${totalSizeMB} MB — Click to change files</small>
             `;
 
             Toast.success(`${validFiles.length} file(s) ready to upload`);
@@ -451,15 +529,17 @@ $user = getCurrentUser();
                 const ext = file.name.split('.').pop().toLowerCase();
                 const hasColor = COLOR_FORMATS.includes(ext);
                 return `
-                <div class="file-list-item" data-index="${i}">
+                <div class="file-list-item ready" data-index="${i}">
                     <div class="file-list-item-info">
                         <i class="fas ${hasColor ? 'fa-palette' : 'fa-cube'}" style="color: ${hasColor ? 'var(--neon-magenta)' : 'var(--neon-cyan)'};"></i>
                         <span class="file-list-item-name">${file.name}</span>
                         <span class="format-badge-mini ${hasColor ? 'format-color' : ''}">${ext.toUpperCase()}</span>
                         <span class="file-list-item-size">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
+                    <span class="file-list-item-status"><i class="fas fa-check"></i> Ready</span>
+                    <span class="viewing-badge"><i class="fas fa-eye"></i> Viewing</span>
                     <button type="button" class="file-list-item-preview btn btn-sm btn-outline" onclick="showPreview(${i})">
-                        <i class="fas fa-eye"></i>
+                        <i class="fas fa-eye"></i> Preview
                     </button>
                 </div>
             `}).join('');
@@ -498,6 +578,10 @@ $user = getCurrentUser();
 
             const file = uploadedFiles[index];
             const url = URL.createObjectURL(file);
+
+            // Update preview status label
+            const fileName = file.name.length > 30 ? file.name.substring(0, 27) + '...' : file.name;
+            previewStatus.textContent = `— Showing: ${fileName}`;
 
             if (viewer) {
                 viewer.dispose();
