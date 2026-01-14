@@ -258,11 +258,23 @@ $user = getCurrentUser();
 
                 <!-- File List -->
                 <div id="file-list-container" class="form-group" style="display: none;">
-                    <label class="form-label">
-                        <i class="fas fa-list" style="color: var(--neon-cyan);"></i>
-                        Uploaded Files
-                    </label>
+                    <div class="file-list-header">
+                        <label class="form-label">
+                            <i class="fas fa-list" style="color: var(--neon-cyan);"></i>
+                            Uploaded Files
+                            <span id="file-list-count" class="file-count-badge">0</span>
+                        </label>
+                        <div class="file-list-actions">
+                            <button type="button" class="btn btn-outline btn-sm" id="clear-files">
+                                <i class="fas fa-trash"></i> Clear all
+                            </button>
+                        </div>
+                    </div>
                     <div id="file-list" class="file-list"></div>
+                    <div id="file-empty" class="file-empty-state">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Select files to see them listed here.</p>
+                    </div>
                 </div>
 
                 <!-- 3D Preview -->
@@ -273,6 +285,14 @@ $user = getCurrentUser();
                             3D Preview
                         </div>
                         <span id="preview-filename" class="preview-filename"></span>
+                        <div class="preview-actions">
+                            <button type="button" class="btn btn-sm btn-outline" id="toggle-autorotate">
+                                <i class="fas fa-sync-alt"></i> Auto-rotate
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" id="reset-view">
+                                <i class="fas fa-expand"></i> Reset view
+                            </button>
+                        </div>
                     </div>
                     <div id="file-tabs" class="file-tabs"></div>
                     <div class="viewer-container" style="height: 300px;">
@@ -447,6 +467,13 @@ $user = getCurrentUser();
         const fileList = document.getElementById('file-list');
         const fileTabs = document.getElementById('file-tabs');
         const previewFilename = document.getElementById('preview-filename');
+        const fileListCount = document.getElementById('file-list-count');
+        const fileEmptyState = document.getElementById('file-empty');
+        const clearFilesButton = document.getElementById('clear-files');
+        const autoRotateButton = document.getElementById('toggle-autorotate');
+        const resetViewButton = document.getElementById('reset-view');
+        const dropzoneText = dropzone.querySelector('.file-upload-text');
+        const defaultDropzoneHtml = dropzoneText.innerHTML;
 
         // Upload summary elements
         const uploadSummary = document.getElementById('upload-summary');
@@ -494,7 +521,6 @@ $user = getCurrentUser();
         function handleFiles(files) {
             uploadedFiles = [];
             let validFiles = [];
-            let totalSize = 0;
 
             files.forEach(file => {
                 const ext = file.name.split('.').pop().toLowerCase();
@@ -507,29 +533,15 @@ $user = getCurrentUser();
                     return;
                 }
                 validFiles.push(file);
-                totalSize += file.size;
             });
 
             if (validFiles.length === 0) return;
 
             uploadedFiles = validFiles;
+            currentPreviewIndex = 0;
+            syncFileInput();
 
-            // Count color formats and get unique extensions
-            const formats = new Set();
-            let colorCount = 0;
-            validFiles.forEach(file => {
-                const ext = file.name.split('.').pop().toLowerCase();
-                formats.add(ext.toUpperCase());
-                if (COLOR_FORMATS.includes(ext)) colorCount++;
-            });
-
-            // Update upload summary
-            uploadSummary.style.display = 'block';
-            summaryCount.textContent = validFiles.length;
-            summarySize.textContent = `${(totalSize / 1024 / 1024).toFixed(2)} MB`;
-            summaryFormats.textContent = Array.from(formats).join(', ');
-            summaryColor.textContent = colorCount;
-
+            updateUploadSummary();
             updateFileList();
             updateFileTabs();
             showPreview(0);
@@ -544,7 +556,7 @@ $user = getCurrentUser();
                     </div>
                     <div class="file-upload-success-text">${fileText} selected</div>
                     <div class="file-upload-success-details">
-                        ${(totalSize / 1024 / 1024).toFixed(2)} MB total
+                        ${formatBytes(getTotalSize())} total
                     </div>
                     <div class="file-upload-change">Click to change files</div>
                 </div>
@@ -555,7 +567,15 @@ $user = getCurrentUser();
 
         function updateFileList() {
             fileListContainer.style.display = 'block';
+            fileListCount.textContent = uploadedFiles.length;
 
+            if (uploadedFiles.length === 0) {
+                fileList.innerHTML = '';
+                fileEmptyState.style.display = 'flex';
+                return;
+            }
+
+            fileEmptyState.style.display = 'none';
             fileList.innerHTML = uploadedFiles.map((file, i) => {
                 const ext = file.name.split('.').pop().toLowerCase();
                 const hasColor = COLOR_FORMATS.includes(ext);
@@ -565,12 +585,17 @@ $user = getCurrentUser();
                         <i class="fas ${hasColor ? 'fa-palette' : 'fa-cube'}" style="color: ${hasColor ? 'var(--neon-magenta)' : 'var(--neon-cyan)'};"></i>
                         <span class="file-list-item-name">${file.name}</span>
                         <span class="format-badge-mini ${hasColor ? 'format-color' : ''}">${ext.toUpperCase()}</span>
-                        <span class="file-list-item-size">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                        <span class="file-list-item-size">${formatBytes(file.size)}</span>
                         <span class="file-list-item-status"><i class="fas fa-check-circle"></i> Ready</span>
                     </div>
-                    <button type="button" class="file-list-item-preview btn btn-sm btn-outline${i === currentPreviewIndex ? ' active' : ''}" onclick="showPreview(${i})">
-                        <i class="fas fa-eye"></i> Preview
-                    </button>
+                    <div class="file-list-item-actions">
+                        <button type="button" class="file-list-item-preview btn btn-sm btn-outline${i === currentPreviewIndex ? ' active' : ''}" data-action="preview" data-index="${i}">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline" data-action="remove" data-index="${i}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             `}).join('');
         }
@@ -584,14 +609,17 @@ $user = getCurrentUser();
             fileTabs.style.display = 'flex';
             fileTabs.innerHTML = uploadedFiles.map((file, i) => `
                 <button type="button" class="file-tab ${i === currentPreviewIndex ? 'active' : ''}"
-                        onclick="showPreview(${i})">
+                        data-index="${i}">
                     ${file.name.replace('.stl', '').substring(0, 15)}${file.name.length > 19 ? '...' : ''}
                 </button>
             `).join('');
         }
 
         function showPreview(index) {
-            if (!uploadedFiles[index]) return;
+            if (!uploadedFiles[index]) {
+                previewContainer.style.display = 'none';
+                return;
+            }
 
             currentPreviewIndex = index;
             previewContainer.style.display = 'block';
@@ -629,7 +657,135 @@ $user = getCurrentUser();
                 Toast.error('Failed to preview model');
                 console.error(err);
             });
+
+            updatePreviewButtons();
         }
+
+        function updateUploadSummary() {
+            if (uploadedFiles.length === 0) {
+                uploadSummary.style.display = 'none';
+                return;
+            }
+
+            const formats = new Set();
+            let colorCount = 0;
+            uploadedFiles.forEach(file => {
+                const ext = file.name.split('.').pop().toLowerCase();
+                formats.add(ext.toUpperCase());
+                if (COLOR_FORMATS.includes(ext)) colorCount++;
+            });
+
+            uploadSummary.style.display = 'block';
+            summaryCount.textContent = uploadedFiles.length;
+            summarySize.textContent = formatBytes(getTotalSize());
+            summaryFormats.textContent = Array.from(formats).join(', ');
+            summaryColor.textContent = colorCount;
+        }
+
+        function getTotalSize() {
+            return uploadedFiles.reduce((sum, file) => sum + file.size, 0);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 MB';
+            const mb = bytes / 1024 / 1024;
+            return `${mb.toFixed(2)} MB`;
+        }
+
+        function resetUploadUI() {
+            uploadedFiles = [];
+            currentPreviewIndex = 0;
+            if (viewer) {
+                viewer.dispose();
+                viewer = null;
+            }
+
+            uploadSummary.style.display = 'none';
+            fileListContainer.style.display = 'none';
+            previewContainer.style.display = 'none';
+            fileList.innerHTML = '';
+            fileTabs.innerHTML = '';
+            fileListCount.textContent = '0';
+            fileEmptyState.style.display = 'flex';
+            dropzone.classList.remove('has-files');
+            dropzoneText.innerHTML = defaultDropzoneHtml;
+            fileInput.value = '';
+        }
+
+        function syncFileInput() {
+            const dt = new DataTransfer();
+            uploadedFiles.forEach(file => dt.items.add(file));
+            fileInput.files = dt.files;
+        }
+
+        function updatePreviewButtons() {
+            if (!viewer) return;
+            autoRotateButton.classList.toggle('active', viewer.controls.autoRotate);
+        }
+
+        if (clearFilesButton) {
+            clearFilesButton.addEventListener('click', () => {
+                resetUploadUI();
+                Toast.info('Cleared selected files');
+            });
+        }
+
+        if (autoRotateButton) {
+            autoRotateButton.addEventListener('click', () => {
+                if (!viewer) return;
+                const nextState = !viewer.controls.autoRotate;
+                viewer.setAutoRotate(nextState);
+                updatePreviewButtons();
+            });
+        }
+
+        if (resetViewButton) {
+            resetViewButton.addEventListener('click', () => {
+                if (!viewer) return;
+                viewer.resetView();
+            });
+        }
+
+        fileTabs.addEventListener('click', (event) => {
+            const button = event.target.closest('.file-tab');
+            if (!button) return;
+            const index = Number(button.dataset.index);
+            showPreview(index);
+        });
+
+        fileList.addEventListener('click', (event) => {
+            const actionButton = event.target.closest('button[data-action]');
+            if (!actionButton) return;
+            const index = Number(actionButton.dataset.index);
+            if (Number.isNaN(index)) return;
+
+            if (actionButton.dataset.action === 'preview') {
+                showPreview(index);
+                return;
+            }
+
+            if (actionButton.dataset.action === 'remove') {
+                uploadedFiles.splice(index, 1);
+                syncFileInput();
+
+                if (uploadedFiles.length === 0) {
+                    resetUploadUI();
+                    Toast.info('All files removed');
+                    return;
+                }
+
+                if (currentPreviewIndex >= uploadedFiles.length) {
+                    currentPreviewIndex = uploadedFiles.length - 1;
+                } else if (index <= currentPreviewIndex) {
+                    currentPreviewIndex = Math.max(0, currentPreviewIndex - 1);
+                }
+
+                updateUploadSummary();
+                updateFileList();
+                updateFileTabs();
+                showPreview(currentPreviewIndex);
+            }
+        });
 
         // Photo upload preview handling
         const photoInput = document.getElementById('model-photo');
