@@ -714,6 +714,7 @@ $user = getCurrentUser();
 
             const file = uploadedFiles[index];
             const url = URL.createObjectURL(file);
+            const ext = file.name.split('.').pop().toLowerCase();
 
             // Update preview filename display
             previewFilename.textContent = file.name;
@@ -733,7 +734,7 @@ $user = getCurrentUser();
                 requestAnimationFrame(() => {
                     try {
                         viewer = new ModelViewer(previewCanvas, { autoRotate: true });
-                        viewer.loadModel(url).then(() => {
+                        viewer.loadModel(url, ext).then(() => {
                             // Success - hide loading
                             if (loadingEl) loadingEl.style.display = 'none';
                         }).catch(err => {
