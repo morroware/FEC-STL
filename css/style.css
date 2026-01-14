@@ -980,6 +980,19 @@ h4 { font-size: 1.25rem; }
     color: var(--neon-cyan);
 }
 
+.section-header-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.section-subtitle {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    max-width: 640px;
+}
+
 /* ============================================================================
    AUTH PAGES
    ============================================================================ */
@@ -2491,6 +2504,48 @@ kbd {
    UPLOAD STATUS & SUMMARY
    ============================================================================ */
 
+.upload-card {
+    padding: 32px;
+}
+
+.upload-step + .upload-step {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+}
+
+.upload-step-header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.upload-step-number {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 240, 255, 0.15);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    color: var(--neon-cyan);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.upload-step-title {
+    margin: 0 0 6px;
+    font-size: 1.1rem;
+}
+
+.upload-step-description {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
 /* Upload status badge */
 .upload-status-badge {
     display: inline-flex;
@@ -2511,8 +2566,8 @@ kbd {
 
 /* Upload summary section */
 .upload-summary {
-    background: linear-gradient(135deg, rgba(0, 240, 255, 0.08), rgba(255, 0, 170, 0.05));
-    border: 1px solid rgba(0, 240, 255, 0.3);
+    background: rgba(0, 240, 255, 0.06);
+    border: 1px solid rgba(0, 240, 255, 0.2);
     border-radius: var(--radius-lg);
     padding: 20px;
     margin-top: 16px;
@@ -2542,11 +2597,11 @@ kbd {
     min-width: 28px;
     height: 28px;
     padding: 0 10px;
-    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+    background: rgba(0, 240, 255, 0.2);
     border-radius: 999px;
     font-size: 0.85rem;
     font-weight: 700;
-    color: var(--bg-dark);
+    color: var(--text-primary);
 }
 
 .upload-summary-stats {
@@ -2816,12 +2871,12 @@ kbd {
     left: -1px;
     right: -1px;
     bottom: -1px;
-    background: linear-gradient(45deg, var(--neon-cyan), var(--neon-magenta), var(--neon-cyan));
+    background: linear-gradient(45deg, rgba(0, 240, 255, 0.4), rgba(0, 240, 255, 0.1));
     background-size: 200% 200%;
-    animation: neon-border-flow 3s ease infinite;
+    animation: neon-border-flow 4s ease infinite;
     border-radius: inherit;
     z-index: -1;
-    opacity: 0.5;
+    opacity: 0.25;
 }
 
 /* ============================================================================

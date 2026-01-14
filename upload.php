@@ -185,11 +185,14 @@ $user = getCurrentUser();
 
     <div class="page-content">
         <div class="container" style="max-width: 800px;">
-            <div class="section-header" style="margin-bottom: 32px;">
-                <h1 class="section-title">
-                    <i class="fas fa-upload"></i>
-                    Upload Model
-                </h1>
+            <div class="section-header upload-header" style="margin-bottom: 24px;">
+                <div class="section-header-content">
+                    <h1 class="section-title">
+                        <i class="fas fa-upload"></i>
+                        Upload Model
+                    </h1>
+                    <p class="section-subtitle">Share your design in three simple steps. Upload your files, add details, and optionally include extras like print settings or a photo.</p>
+                </div>
             </div>
 
             <?php if ($error): ?>
@@ -199,33 +202,33 @@ $user = getCurrentUser();
                 </div>
             <?php endif; ?>
 
-            <form method="POST" enctype="multipart/form-data" class="card" style="padding: 32px;">
+            <form method="POST" enctype="multipart/form-data" class="card upload-card">
                 <!-- Multi-File Upload -->
-                <div class="form-group">
-                    <label class="form-label required">3D Model Files</label>
-                    <div class="file-upload" id="file-dropzone">
-                        <input type="file" name="model_files[]" accept=".stl,.obj,.ply,.gltf,.glb,.3mf" multiple required>
-                        <div class="file-upload-icon">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                        </div>
-                        <div class="file-upload-text">
-                            <strong>Click to upload</strong> or drag and drop<br>
-                            <small>Supported: STL, OBJ, PLY, GLTF, GLB, 3MF (max 50MB each)</small>
+                <div class="upload-step">
+                    <div class="upload-step-header">
+                        <div class="upload-step-number">1</div>
+                        <div>
+                            <h2 class="upload-step-title">Add your files</h2>
+                            <p class="upload-step-description">Drag and drop your 3D model files, or click to browse. You can upload multiple files at once.</p>
                         </div>
                     </div>
-                    <div class="form-hint" style="margin-top: 8px;">
-                        <i class="fas fa-palette" style="color: var(--neon-magenta);"></i>
-                        <strong>Color Support:</strong> OBJ, PLY, GLTF, GLB, and 3MF files can include full color data!
+
+                    <div class="form-group">
+                        <label class="form-label required">3D model files</label>
+                        <div class="file-upload" id="file-dropzone">
+                            <input type="file" name="model_files[]" accept=".stl,.obj,.ply,.gltf,.glb,.3mf" multiple required>
+                            <div class="file-upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div class="file-upload-text">
+                                <strong>Click to choose files</strong> or drag and drop<br>
+                                <small>Formats: STL, OBJ, PLY, GLTF/GLB, 3MF (max 50MB each)</small>
+                            </div>
+                        </div>
+                        <div class="form-hint" style="margin-top: 8px;">
+                            Color-ready formats: OBJ, PLY, GLTF/GLB, and 3MF can include full color data.
+                        </div>
                     </div>
-                    <div class="format-badges" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
-                        <span class="format-badge"><i class="fas fa-cube"></i> STL</span>
-                        <span class="format-badge format-color"><i class="fas fa-palette"></i> OBJ</span>
-                        <span class="format-badge format-color"><i class="fas fa-palette"></i> PLY</span>
-                        <span class="format-badge format-color"><i class="fas fa-palette"></i> GLTF</span>
-                        <span class="format-badge format-color"><i class="fas fa-palette"></i> GLB</span>
-                        <span class="format-badge format-color"><i class="fas fa-palette"></i> 3MF</span>
-                    </div>
-                </div>
 
                 <!-- Upload Summary -->
                 <div id="upload-summary" class="upload-summary" style="display: none;">
@@ -300,126 +303,144 @@ $user = getCurrentUser();
                     </div>
                 </div>
 
-                <!-- Optional Photo Upload -->
-                <div class="form-group">
-                    <label class="form-label">
-                        <i class="fas fa-camera" style="color: var(--neon-magenta);"></i>
-                        Photo of Printed Model (Optional)
-                    </label>
-                    <div class="photo-upload-section" id="photo-dropzone">
-                        <label for="model-photo">
-                            <div class="upload-icon"><i class="fas fa-camera"></i></div>
-                            <div class="upload-title">Add a photo of your printed model</div>
-                            <div class="upload-hint">
-                                Show off your actual print! JPG, PNG, GIF, WebP (max 10MB)<br>
-                                <small style="color: var(--neon-magenta);">This photo will be shown as a preview thumbnail</small>
+                </div>
+
+                <div class="upload-step">
+                    <div class="upload-step-header">
+                        <div class="upload-step-number">2</div>
+                        <div>
+                            <h2 class="upload-step-title">Describe your model</h2>
+                            <p class="upload-step-description">Help others find and understand your design with a clear title, category, and description.</p>
+                        </div>
+                    </div>
+
+                    <!-- Title -->
+                    <div class="form-group">
+                        <label class="form-label required">Title</label>
+                        <input type="text" name="title" class="form-input" 
+                               placeholder="Give your model a descriptive title"
+                               value="<?= sanitize($_POST['title'] ?? '') ?>" 
+                               maxlength="100" required>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="form-group">
+                        <label class="form-label required">Category</label>
+                        <select name="category" class="form-select" required>
+                            <option value="">Select a category</option>
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>" 
+                                        <?= ($_POST['category'] ?? '') === $cat['id'] ? 'selected' : '' ?>>
+                                    <?= sanitize($cat['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-textarea" 
+                                  placeholder="Describe your model, what it's for, how to use it..."
+                                  rows="4"><?= sanitize($_POST['description'] ?? '') ?></textarea>
+                    </div>
+                </div>
+
+                <div class="upload-step">
+                    <div class="upload-step-header">
+                        <div class="upload-step-number">3</div>
+                        <div>
+                            <h2 class="upload-step-title">Optional extras</h2>
+                            <p class="upload-step-description">Add a photo, tags, print settings, and licensing to help others print your model.</p>
+                        </div>
+                    </div>
+
+                    <!-- Optional Photo Upload -->
+                    <div class="form-group">
+                        <label class="form-label">Photo of the printed model (optional)</label>
+                        <div class="photo-upload-section" id="photo-dropzone">
+                            <label for="model-photo">
+                                <div class="upload-icon"><i class="fas fa-camera"></i></div>
+                                <div class="upload-title">Add a photo of your print</div>
+                                <div class="upload-hint">
+                                    JPG, PNG, GIF, or WebP (max 10MB). This will be used as the preview thumbnail.
+                                </div>
+                                <input type="file" name="model_photo" id="model-photo" accept=".jpg,.jpeg,.png,.gif,.webp">
+                            </label>
+                            <div id="photo-preview" class="photo-preview" style="display: none;">
+                                <img id="photo-preview-img" src="" alt="Photo preview">
+                                <button type="button" class="remove-photo" id="remove-photo">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
-                            <input type="file" name="model_photo" id="model-photo" accept=".jpg,.jpeg,.png,.gif,.webp">
-                        </label>
-                        <div id="photo-preview" class="photo-preview" style="display: none;">
-                            <img id="photo-preview-img" src="" alt="Photo preview">
-                            <button type="button" class="remove-photo" id="remove-photo">
-                                <i class="fas fa-times"></i>
-                            </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Title -->
-                <div class="form-group">
-                    <label class="form-label required">Title</label>
-                    <input type="text" name="title" class="form-input" 
-                           placeholder="Give your model a descriptive title"
-                           value="<?= sanitize($_POST['title'] ?? '') ?>" 
-                           maxlength="100" required>
-                </div>
+                    <!-- Tags -->
+                    <div class="form-group">
+                        <label class="form-label">Tags</label>
+                        <div data-tags-input data-name="tags"></div>
+                        <div class="form-hint">Press Enter or comma to add tags (max 10).</div>
+                    </div>
 
-                <!-- Category -->
-                <div class="form-group">
-                    <label class="form-label required">Category</label>
-                    <select name="category" class="form-select" required>
-                        <option value="">Select a category</option>
-                        <?php foreach ($categories as $cat): ?>
-                            <option value="<?= $cat['id'] ?>" 
-                                    <?= ($_POST['category'] ?? '') === $cat['id'] ? 'selected' : '' ?>>
-                                <?= sanitize($cat['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <!-- Description -->
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" 
-                              placeholder="Describe your model, what it's for, how to use it..."
-                              rows="4"><?= sanitize($_POST['description'] ?? '') ?></textarea>
-                </div>
-
-                <!-- Tags -->
-                <div class="form-group">
-                    <label class="form-label">Tags</label>
-                    <div data-tags-input data-name="tags"></div>
-                    <div class="form-hint">Press Enter or comma to add tags (max 10)</div>
-                </div>
-
-                <!-- Print Settings -->
-                <div class="form-group">
-                    <label class="form-label">Recommended Print Settings</label>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-                        <div>
-                            <label class="form-label" style="font-size: 0.85rem;">Layer Height</label>
-                            <select name="layer_height" class="form-select">
-                                <option value="">Not specified</option>
-                                <option value="0.1mm">0.1mm (Fine)</option>
-                                <option value="0.2mm">0.2mm (Standard)</option>
-                                <option value="0.3mm">0.3mm (Draft)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label" style="font-size: 0.85rem;">Infill</label>
-                            <select name="infill" class="form-select">
-                                <option value="">Not specified</option>
-                                <option value="10%">10% (Light)</option>
-                                <option value="20%">20% (Standard)</option>
-                                <option value="50%">50% (Strong)</option>
-                                <option value="100%">100% (Solid)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label" style="font-size: 0.85rem;">Supports</label>
-                            <select name="supports" class="form-select">
-                                <option value="">Not specified</option>
-                                <option value="None">None needed</option>
-                                <option value="Touching buildplate">Touching buildplate</option>
-                                <option value="Everywhere">Everywhere</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label" style="font-size: 0.85rem;">Material</label>
-                            <select name="material" class="form-select">
-                                <option value="">Not specified</option>
-                                <option value="PLA">PLA</option>
-                                <option value="PETG">PETG</option>
-                                <option value="ABS">ABS</option>
-                                <option value="TPU">TPU (Flexible)</option>
-                                <option value="Resin">Resin</option>
-                            </select>
+                    <!-- Print Settings -->
+                    <div class="form-group">
+                        <label class="form-label">Recommended print settings</label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                            <div>
+                                <label class="form-label" style="font-size: 0.85rem;">Layer height</label>
+                                <select name="layer_height" class="form-select">
+                                    <option value="">Not specified</option>
+                                    <option value="0.1mm">0.1mm (Fine)</option>
+                                    <option value="0.2mm">0.2mm (Standard)</option>
+                                    <option value="0.3mm">0.3mm (Draft)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" style="font-size: 0.85rem;">Infill</label>
+                                <select name="infill" class="form-select">
+                                    <option value="">Not specified</option>
+                                    <option value="10%">10% (Light)</option>
+                                    <option value="20%">20% (Standard)</option>
+                                    <option value="50%">50% (Strong)</option>
+                                    <option value="100%">100% (Solid)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" style="font-size: 0.85rem;">Supports</label>
+                                <select name="supports" class="form-select">
+                                    <option value="">Not specified</option>
+                                    <option value="None">None needed</option>
+                                    <option value="Touching buildplate">Touching buildplate</option>
+                                    <option value="Everywhere">Everywhere</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" style="font-size: 0.85rem;">Material</label>
+                                <select name="material" class="form-select">
+                                    <option value="">Not specified</option>
+                                    <option value="PLA">PLA</option>
+                                    <option value="PETG">PETG</option>
+                                    <option value="ABS">ABS</option>
+                                    <option value="TPU">TPU (Flexible)</option>
+                                    <option value="Resin">Resin</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- License -->
-                <div class="form-group">
-                    <label class="form-label">License</label>
-                    <select name="license" class="form-select">
-                        <option value="CC BY">CC BY - Attribution</option>
-                        <option value="CC BY-SA">CC BY-SA - Attribution-ShareAlike</option>
-                        <option value="CC BY-NC" selected>CC BY-NC - Attribution-NonCommercial</option>
-                        <option value="CC BY-NC-SA">CC BY-NC-SA - Attribution-NonCommercial-ShareAlike</option>
-                        <option value="CC0">CC0 - Public Domain</option>
-                    </select>
-                    <div class="form-hint">Choose how others can use your model</div>
+                    <!-- License -->
+                    <div class="form-group">
+                        <label class="form-label">License</label>
+                        <select name="license" class="form-select">
+                            <option value="CC BY">CC BY - Attribution</option>
+                            <option value="CC BY-SA">CC BY-SA - Attribution-ShareAlike</option>
+                            <option value="CC BY-NC" selected>CC BY-NC - Attribution-NonCommercial</option>
+                            <option value="CC BY-NC-SA">CC BY-NC-SA - Attribution-NonCommercial-ShareAlike</option>
+                            <option value="CC0">CC0 - Public Domain</option>
+                        </select>
+                        <div class="form-hint">Choose how others can use your model.</div>
+                    </div>
                 </div>
 
                 <!-- Submit -->
