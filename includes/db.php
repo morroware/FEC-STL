@@ -304,7 +304,21 @@ function searchModels(string $query, ?string $category = null, string $sort = 'n
 function createModel(array $data): ?string {
     $models = getModels();
     $id = generateId();
-    
+
+    // Support both single file (legacy) and multiple files
+    $files = [];
+    if (!empty($data['files'])) {
+        // Multiple files format
+        $files = $data['files'];
+    } elseif (!empty($data['filename'])) {
+        // Legacy single file - convert to files array
+        $files = [[
+            'filename' => $data['filename'],
+            'filesize' => $data['filesize'],
+            'original_name' => $data['original_name'] ?? $data['filename']
+        ]];
+    }
+
     $model = [
         'id' => $id,
         'user_id' => $data['user_id'],
@@ -312,8 +326,10 @@ function createModel(array $data): ?string {
         'description' => $data['description'] ?? '',
         'category' => $data['category'],
         'tags' => $data['tags'] ?? [],
-        'filename' => $data['filename'],
-        'filesize' => $data['filesize'],
+        'files' => $files,
+        'filename' => $files[0]['filename'] ?? '', // Primary file for backwards compat
+        'filesize' => array_sum(array_column($files, 'filesize')), // Total size
+        'file_count' => count($files),
         'thumbnail' => $data['thumbnail'] ?? null,
         'images' => $data['images'] ?? [],
         'license' => $data['license'] ?? 'CC BY-NC',
@@ -321,6 +337,7 @@ function createModel(array $data): ?string {
         'downloads' => 0,
         'likes' => 0,
         'views' => 0,
+        'featured' => false,
         'created_at' => date('Y-m-d H:i:s'),
         'updated_at' => date('Y-m-d H:i:s')
     ];

@@ -160,12 +160,20 @@ if ($query) {
             <?php else: ?>
                 <div class="model-grid">
                     <?php foreach ($models as $model): ?>
-                        <?php $category = getCategory($model['category']); ?>
+                        <?php
+                        $category = getCategory($model['category']);
+                        $fileCount = $model['file_count'] ?? 1;
+                        ?>
                         <div class="card model-card">
                             <div class="model-card-preview">
                                 <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
                                     <i class="fas fa-cube"></i>
                                 </div>
+                                <?php if ($fileCount > 1): ?>
+                                <div style="position: absolute; top: 12px; right: 12px;">
+                                    <span class="file-count-badge"><?= $fileCount ?> files</span>
+                                </div>
+                                <?php endif; ?>
                                 <div class="model-card-overlay">
                                     <div class="model-card-actions">
                                         <a href="model.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-sm">

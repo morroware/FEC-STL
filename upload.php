@@ -22,59 +22,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category = $_POST['category'] ?? '';
     $license = $_POST['license'] ?? 'CC BY-NC';
     $tags = [];
-    
+
     if (!empty($_POST['tags'])) {
         $tags = json_decode($_POST['tags'], true) ?? [];
     }
-    
+
     // Print settings
     $printSettings = [];
     if (!empty($_POST['layer_height'])) $printSettings['layer_height'] = $_POST['layer_height'];
     if (!empty($_POST['infill'])) $printSettings['infill'] = $_POST['infill'];
     if (!empty($_POST['supports'])) $printSettings['supports'] = $_POST['supports'];
     if (!empty($_POST['material'])) $printSettings['material'] = $_POST['material'];
-    
+
     // Validation
     if (!$title) {
         $error = 'Title is required';
     } elseif (!$category) {
         $error = 'Please select a category';
-    } elseif (!isset($_FILES['stl_file']) || $_FILES['stl_file']['error'] !== UPLOAD_ERR_OK) {
-        $error = 'Please upload an STL file';
+    } elseif (!isset($_FILES['stl_files']) || !is_array($_FILES['stl_files']['name']) || empty($_FILES['stl_files']['name'][0])) {
+        $error = 'Please upload at least one STL file';
     } else {
-        $file = $_FILES['stl_file'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        
-        if ($ext !== 'stl') {
-            $error = 'Only STL files are allowed';
-        } elseif ($file['size'] > MAX_FILE_SIZE) {
-            $error = 'File too large (max 50MB)';
-        } else {
+        $uploadedFiles = [];
+        $hasError = false;
+
+        // Process multiple files
+        $fileCount = count($_FILES['stl_files']['name']);
+        $totalSize = 0;
+
+        for ($i = 0; $i < $fileCount; $i++) {
+            if ($_FILES['stl_files']['error'][$i] !== UPLOAD_ERR_OK) continue;
+
+            $originalName = $_FILES['stl_files']['name'][$i];
+            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+            $size = $_FILES['stl_files']['size'][$i];
+            $tmpName = $_FILES['stl_files']['tmp_name'][$i];
+
+            if ($ext !== 'stl') {
+                $error = 'Only STL files are allowed: ' . $originalName;
+                $hasError = true;
+                break;
+            }
+
+            if ($size > MAX_FILE_SIZE) {
+                $error = 'File too large (max 50MB): ' . $originalName;
+                $hasError = true;
+                break;
+            }
+
+            $totalSize += $size;
+
             // Generate unique filename
-            $filename = generateId() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
+            $filename = generateId() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $originalName);
             $filepath = UPLOADS_DIR . $filename;
-            
-            if (move_uploaded_file($file['tmp_name'], $filepath)) {
-                $modelId = createModel([
-                    'user_id' => $_SESSION['user_id'],
-                    'title' => $title,
-                    'description' => $description,
-                    'category' => $category,
-                    'tags' => $tags,
+
+            if (move_uploaded_file($tmpName, $filepath)) {
+                $uploadedFiles[] = [
                     'filename' => $filename,
-                    'filesize' => $file['size'],
-                    'license' => $license,
-                    'print_settings' => $printSettings
-                ]);
-                
-                if ($modelId) {
-                    redirect('model.php?id=' . $modelId);
-                } else {
-                    unlink($filepath);
-                    $error = 'Failed to create model. Please try again.';
-                }
+                    'filesize' => $size,
+                    'original_name' => pathinfo($originalName, PATHINFO_FILENAME)
+                ];
             } else {
-                $error = 'Failed to upload file. Please try again.';
+                $error = 'Failed to upload: ' . $originalName;
+                $hasError = true;
+                break;
+            }
+        }
+
+        if (!$hasError && !empty($uploadedFiles)) {
+            $modelId = createModel([
+                'user_id' => $_SESSION['user_id'],
+                'title' => $title,
+                'description' => $description,
+                'category' => $category,
+                'tags' => $tags,
+                'files' => $uploadedFiles,
+                'license' => $license,
+                'print_settings' => $printSettings
+            ]);
+
+            if ($modelId) {
+                redirect('model.php?id=' . $modelId);
+            } else {
+                // Cleanup uploaded files on failure
+                foreach ($uploadedFiles as $file) {
+                    @unlink(UPLOADS_DIR . $file['filename']);
+                }
+                $error = 'Failed to create model. Please try again.';
+            }
+        } elseif ($hasError && !empty($uploadedFiles)) {
+            // Cleanup any successfully uploaded files if there was an error
+            foreach ($uploadedFiles as $file) {
+                @unlink(UPLOADS_DIR . $file['filename']);
             }
         }
     }
@@ -143,24 +181,35 @@ $user = getCurrentUser();
             <?php endif; ?>
 
             <form method="POST" enctype="multipart/form-data" class="card" style="padding: 32px;">
-                <!-- File Upload -->
+                <!-- Multi-File Upload -->
                 <div class="form-group">
-                    <label class="form-label required">STL File</label>
+                    <label class="form-label required">STL Files</label>
                     <div class="file-upload" id="file-dropzone">
-                        <input type="file" name="stl_file" accept=".stl" required>
+                        <input type="file" name="stl_files[]" accept=".stl" multiple required>
                         <div class="file-upload-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <div class="file-upload-text">
                             <strong>Click to upload</strong> or drag and drop<br>
-                            <small>STL files only, max 50MB</small>
+                            <small>Select multiple STL files (max 50MB each)</small>
                         </div>
                     </div>
+                    <div class="form-hint" style="margin-top: 8px;">
+                        <i class="fas fa-lightbulb" style="color: var(--neon-yellow);"></i>
+                        Upload multiple STL files to create a project bundle (e.g., "Arcade Button Set")
+                    </div>
+                </div>
+
+                <!-- File List -->
+                <div id="file-list-container" class="form-group" style="display: none;">
+                    <label class="form-label">Selected Files (<span id="file-count">0</span>)</label>
+                    <div id="file-list" class="file-list"></div>
                 </div>
 
                 <!-- 3D Preview -->
                 <div id="preview-container" class="form-group" style="display: none;">
                     <label class="form-label">Preview</label>
+                    <div id="file-tabs" class="file-tabs"></div>
                     <div class="viewer-container" style="height: 300px;">
                         <div class="viewer-canvas" id="upload-preview"></div>
                     </div>
@@ -294,13 +343,20 @@ $user = getCurrentUser();
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
     <script>
-        // Enhanced file upload with preview
+        // Multi-file upload with preview
         const dropzone = document.getElementById('file-dropzone');
         const fileInput = dropzone.querySelector('input[type="file"]');
         const previewContainer = document.getElementById('preview-container');
         const previewCanvas = document.getElementById('upload-preview');
+        const fileListContainer = document.getElementById('file-list-container');
+        const fileList = document.getElementById('file-list');
+        const fileTabs = document.getElementById('file-tabs');
+        const fileCountSpan = document.getElementById('file-count');
+
         let viewer = null;
-        
+        let uploadedFiles = [];
+        let currentPreviewIndex = 0;
+
         // Drag and drop styling
         ['dragenter', 'dragover'].forEach(event => {
             dropzone.addEventListener(event, (e) => {
@@ -308,59 +364,121 @@ $user = getCurrentUser();
                 dropzone.classList.add('dragover');
             });
         });
-        
+
         ['dragleave', 'drop'].forEach(event => {
             dropzone.addEventListener(event, (e) => {
                 e.preventDefault();
                 dropzone.classList.remove('dragover');
             });
         });
-        
+
         dropzone.addEventListener('drop', (e) => {
             const files = e.dataTransfer.files;
             if (files.length) {
-                fileInput.files = files;
-                handleFile(files[0]);
+                handleFiles(Array.from(files));
             }
         });
-        
+
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length) {
-                handleFile(e.target.files[0]);
+                handleFiles(Array.from(e.target.files));
             }
         });
-        
-        function handleFile(file) {
-            // Validate
-            if (!file.name.toLowerCase().endsWith('.stl')) {
-                Toast.error('Only STL files are allowed');
-                return;
-            }
-            
-            if (file.size > 50 * 1024 * 1024) {
-                Toast.error('File too large (max 50MB)');
-                return;
-            }
-            
+
+        function handleFiles(files) {
+            uploadedFiles = [];
+            let validFiles = [];
+            let totalSize = 0;
+
+            files.forEach(file => {
+                if (!file.name.toLowerCase().endsWith('.stl')) {
+                    Toast.error(`Only STL files allowed: ${file.name}`);
+                    return;
+                }
+                if (file.size > 50 * 1024 * 1024) {
+                    Toast.error(`File too large (max 50MB): ${file.name}`);
+                    return;
+                }
+                validFiles.push(file);
+                totalSize += file.size;
+            });
+
+            if (validFiles.length === 0) return;
+
+            uploadedFiles = validFiles;
+            updateFileList();
+            updateFileTabs();
+            showPreview(0);
+
             // Update dropzone text
+            const fileText = validFiles.length === 1 ? '1 file' : `${validFiles.length} files`;
             dropzone.querySelector('.file-upload-text').innerHTML = `
-                <strong>${file.name}</strong><br>
-                <small>${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+                <strong>${fileText} selected</strong><br>
+                <small>Total: ${(totalSize / 1024 / 1024).toFixed(2)} MB</small>
             `;
-            
-            // Show preview
+
+            Toast.success(`${validFiles.length} file(s) ready to upload`);
+        }
+
+        function updateFileList() {
+            fileListContainer.style.display = 'block';
+            fileCountSpan.textContent = uploadedFiles.length;
+
+            fileList.innerHTML = uploadedFiles.map((file, i) => `
+                <div class="file-list-item" data-index="${i}">
+                    <div class="file-list-item-info">
+                        <i class="fas fa-cube" style="color: var(--neon-cyan);"></i>
+                        <span class="file-list-item-name">${file.name}</span>
+                        <span class="file-list-item-size">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                    </div>
+                    <button type="button" class="file-list-item-preview btn btn-sm btn-outline" onclick="showPreview(${i})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function updateFileTabs() {
+            if (uploadedFiles.length <= 1) {
+                fileTabs.style.display = 'none';
+                return;
+            }
+
+            fileTabs.style.display = 'flex';
+            fileTabs.innerHTML = uploadedFiles.map((file, i) => `
+                <button type="button" class="file-tab ${i === currentPreviewIndex ? 'active' : ''}"
+                        onclick="showPreview(${i})">
+                    ${file.name.replace('.stl', '').substring(0, 15)}${file.name.length > 19 ? '...' : ''}
+                </button>
+            `).join('');
+        }
+
+        function showPreview(index) {
+            if (!uploadedFiles[index]) return;
+
+            currentPreviewIndex = index;
             previewContainer.style.display = 'block';
-            
-            // Create blob URL and load preview
+
+            // Update tab active state
+            document.querySelectorAll('.file-tab').forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+            });
+
+            // Update file list active state
+            document.querySelectorAll('.file-list-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+
+            const file = uploadedFiles[index];
             const url = URL.createObjectURL(file);
-            
+
             if (viewer) {
                 viewer.dispose();
             }
-            
+
             viewer = new STLViewer(previewCanvas, { autoRotate: true });
             viewer.loadSTL(url).then(() => {
-                Toast.success('File loaded successfully');
+                // Success - model loaded
             }).catch(err => {
                 Toast.error('Failed to preview STL');
                 console.error(err);

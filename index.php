@@ -10,10 +10,19 @@ $categories = getCategories();
 $recentModels = searchModels('', null, 'newest');
 $recentModels = array_slice($recentModels, 0, 8);
 
+// Get trending/popular models (most downloads in recent models)
+$trendingModels = searchModels('', null, 'popular');
+$trendingModels = array_slice($trendingModels, 0, 4);
+
 // Add author info to models
 foreach ($recentModels as $index => $model) {
     $user = getUser($model['user_id']);
     $recentModels[$index]['author'] = $user ? $user['username'] : 'Unknown';
+}
+
+foreach ($trendingModels as $index => $model) {
+    $user = getUser($model['user_id']);
+    $trendingModels[$index]['author'] = $user ? $user['username'] : 'Unknown';
 }
 ?>
 <!DOCTYPE html>
@@ -99,6 +108,80 @@ foreach ($recentModels as $index => $model) {
             </div>
         </section>
 
+        <?php if (!empty($trendingModels)): ?>
+        <!-- Trending/Featured Section -->
+        <section class="container" style="margin-bottom: 60px;">
+            <div class="featured-section">
+                <div class="section-header" style="margin-bottom: 24px;">
+                    <div>
+                        <span class="featured-badge">
+                            <i class="fas fa-fire"></i> Hot Right Now
+                        </span>
+                        <h2 class="section-title" style="margin-top: 12px;">
+                            <i class="fas fa-chart-line"></i>
+                            Trending Models
+                        </h2>
+                    </div>
+                    <a href="browse.php?sort=popular" class="btn btn-outline btn-sm">View All Popular</a>
+                </div>
+
+                <div class="model-grid">
+                    <?php foreach ($trendingModels as $tm): ?>
+                        <?php $category = getCategory($tm['category']); ?>
+                        <div class="card model-card">
+                            <div class="model-card-preview">
+                                <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($tm['filename']) ?>">
+                                    <i class="fas fa-cube"></i>
+                                </div>
+                                <?php if (($tm['file_count'] ?? 1) > 1): ?>
+                                <div style="position: absolute; top: 12px; right: 12px;">
+                                    <span class="file-count-badge"><?= $tm['file_count'] ?> files</span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if (($tm['downloads'] ?? 0) > 0): ?>
+                                <div style="position: absolute; top: 12px; left: 12px;">
+                                    <span class="trending-indicator">
+                                        <i class="fas fa-arrow-up"></i> <?= $tm['downloads'] ?> downloads
+                                    </span>
+                                </div>
+                                <?php endif; ?>
+                                <div class="model-card-overlay">
+                                    <div class="model-card-actions">
+                                        <a href="model.php?id=<?= $tm['id'] ?>" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="model-card-body">
+                                <?php if ($category): ?>
+                                    <span class="model-card-category">
+                                        <i class="fas <?= sanitize($category['icon']) ?>"></i>
+                                        <?= sanitize($category['name']) ?>
+                                    </span>
+                                <?php endif; ?>
+                                <h3 class="model-card-title">
+                                    <a href="model.php?id=<?= $tm['id'] ?>"><?= sanitize($tm['title']) ?></a>
+                                </h3>
+                                <div class="model-card-author">
+                                    <div class="author-avatar">
+                                        <?= strtoupper(substr($tm['author'], 0, 1)) ?>
+                                    </div>
+                                    <a href="profile.php?id=<?= $tm['user_id'] ?>"><?= sanitize($tm['author']) ?></a>
+                                </div>
+                                <div class="model-card-meta">
+                                    <span><i class="fas fa-download"></i> <?= $tm['downloads'] ?? 0 ?></span>
+                                    <span><i class="fas fa-heart"></i> <?= $tm['likes'] ?? 0 ?></span>
+                                    <span><i class="fas fa-eye"></i> <?= $tm['views'] ?? 0 ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+        <?php endif; ?>
+
         <!-- Categories Section -->
         <section class="container" style="margin-bottom: 60px;">
             <div class="section-header">
@@ -159,14 +242,20 @@ foreach ($recentModels as $index => $model) {
             <?php else: ?>
                 <div class="model-grid">
                     <?php foreach ($recentModels as $model): ?>
-                        <?php 
+                        <?php
                         $category = getCategory($model['category']);
+                        $fileCount = $model['file_count'] ?? 1;
                         ?>
                         <div class="card model-card">
                             <div class="model-card-preview">
                                 <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
                                     <i class="fas fa-cube"></i>
                                 </div>
+                                <?php if ($fileCount > 1): ?>
+                                <div style="position: absolute; top: 12px; right: 12px;">
+                                    <span class="file-count-badge"><?= $fileCount ?> files</span>
+                                </div>
+                                <?php endif; ?>
                                 <div class="model-card-overlay">
                                     <div class="model-card-actions">
                                         <a href="model.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-sm">
