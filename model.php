@@ -114,15 +114,23 @@ foreach ($relatedModels as $index => $rm) {
                     $hasPhotos = !empty($photos);
                     $photoCount = count($photos);
                     $primaryDisplay = $model['primary_display'] ?? 'auto';
+                    $initialFileIndex = 0;
+                    if (is_numeric($primaryDisplay)) {
+                        $candidateIndex = (int) $primaryDisplay;
+                        if ($candidateIndex >= 0 && $candidateIndex < $fileCount) {
+                            $initialFileIndex = $candidateIndex;
+                        }
+                    }
+                    $defaultViewMode = ($hasPhotos && ($primaryDisplay === 'photo' || $primaryDisplay === 'auto')) ? 'photo' : '3d';
                     ?>
 
                     <?php if ($hasPhotos): ?>
                     <!-- View Mode Toggle -->
                     <div class="view-mode-toggle">
-                        <button type="button" class="view-mode-btn active" data-mode="3d">
+                        <button type="button" class="view-mode-btn <?= $defaultViewMode === '3d' ? 'active' : '' ?>" data-mode="3d">
                             <i class="fas fa-cube"></i> 3D View
                         </button>
-                        <button type="button" class="view-mode-btn photo-mode" data-mode="photo">
+                        <button type="button" class="view-mode-btn photo-mode <?= $defaultViewMode === 'photo' ? 'active' : '' ?>" data-mode="photo">
                             <i class="fas fa-camera"></i> Photo<?= $photoCount > 1 ? "s ($photoCount)" : '' ?>
                         </button>
                     </div>
@@ -137,7 +145,7 @@ foreach ($relatedModels as $index => $rm) {
                         </div>
                         <div class="file-tabs" id="model-file-tabs">
                             <?php foreach ($files as $index => $file): ?>
-                            <button type="button" class="file-tab <?= $index === 0 ? 'active' : '' ?>"
+                            <button type="button" class="file-tab <?= $index === $initialFileIndex ? 'active' : '' ?>"
                                     data-file-index="<?= $index ?>"
                                     data-file-url="uploads/<?= sanitize($file['filename']) ?>">
                                 <i class="fas fa-cube"></i>
@@ -150,7 +158,7 @@ foreach ($relatedModels as $index => $rm) {
 
                     <?php if ($hasPhotos): ?>
                     <!-- Photo Gallery View -->
-                    <div class="model-photo-gallery" id="photo-gallery">
+                    <div class="model-photo-gallery <?= $defaultViewMode === 'photo' ? 'active' : '' ?>" id="photo-gallery">
                         <div class="photo-main">
                             <img id="photo-main-img" src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($model['title']) ?> - Printed Model">
                             <div class="photo-badge">
@@ -292,7 +300,8 @@ foreach ($relatedModels as $index => $rm) {
 
                         <div class="viewer-canvas" id="main-viewer"
                              data-stl-viewer
-                             data-stl-url="uploads/<?= sanitize($files[0]['filename']) ?>"></div>
+                             data-stl-url="uploads/<?= sanitize($files[$initialFileIndex]['filename']) ?>"
+                             data-default-view="<?= $defaultViewMode ?>"></div>
 
                         <!-- Controls (bottom-right) -->
                         <div class="viewer-controls">
@@ -563,7 +572,8 @@ foreach ($relatedModels as $index => $rm) {
         // Files data for multi-file downloads
         const modelFiles = <?= json_encode(array_map(fn($f) => [
             'filename' => $f['filename'],
-            'original_name' => $f['original_name'] ?? pathinfo($f['filename'], PATHINFO_FILENAME)
+            'original_name' => $f['original_name'] ?? pathinfo($f['filename'], PATHINFO_FILENAME),
+            'extension' => $f['extension'] ?? pathinfo($f['filename'], PATHINFO_EXTENSION)
         ], $files)) ?>;
 
         // Model photos array
@@ -583,6 +593,13 @@ foreach ($relatedModels as $index => $rm) {
             const photoGallery = document.getElementById('photo-gallery');
             const viewerWrapper = document.querySelector('.viewer-container');
             const fileSelector = document.getElementById('file-selector');
+            const defaultView = viewerContainer?.dataset.defaultView || '3d';
+
+            if (defaultView === 'photo' && photoGallery) {
+                photoGallery.classList.add('active');
+                if (viewerWrapper) viewerWrapper.style.display = 'none';
+                if (fileSelector) fileSelector.style.display = 'none';
+            }
 
             viewModeBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -975,7 +992,8 @@ foreach ($relatedModels as $index => $rm) {
 
             const link = document.createElement('a');
             link.href = 'uploads/' + file.filename;
-            link.download = file.original_name + '.stl';
+            const extension = file.extension ? `.${file.extension}` : '';
+            link.download = file.original_name + extension;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

@@ -674,12 +674,17 @@ $user = getCurrentUser();
             }
 
             fileTabs.style.display = 'flex';
-            fileTabs.innerHTML = uploadedFiles.map((file, i) => `
+            fileTabs.innerHTML = uploadedFiles.map((file, i) => {
+                const nameParts = file.name.split('.');
+                const baseName = nameParts.length > 1 ? nameParts.slice(0, -1).join('.') : file.name;
+                const shortName = baseName.length > 19 ? `${baseName.substring(0, 15)}...` : baseName;
+                return `
                 <button type="button" class="file-tab ${i === currentPreviewIndex ? 'active' : ''}"
                         data-index="${i}">
-                    ${file.name.replace('.stl', '').substring(0, 15)}${file.name.length > 19 ? '...' : ''}
+                    ${shortName}
                 </button>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function showPreview(index) {
@@ -803,6 +808,7 @@ $user = getCurrentUser();
             dropzone.classList.remove('has-files');
             dropzoneText.innerHTML = defaultDropzoneHtml;
             fileInput.value = '';
+            updatePrimaryDisplayOptions();
         }
 
         function syncFileInput() {
