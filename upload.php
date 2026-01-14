@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hasError = false;
 
         // Supported 3D printing file formats
-        $allowedExtensions = ['stl', 'obj', 'ply', 'gltf', 'glb', '3mf'];
+        $allowedExtensions = ['stl', 'obj'];
 
         // Process multiple files
         $fileCount = count($_FILES['model_files']['name']);
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'filesize' => $size,
                     'original_name' => pathinfo($originalName, PATHINFO_FILENAME),
                     'extension' => $ext,
-                    'has_color' => in_array($ext, ['obj', 'ply', 'gltf', 'glb', '3mf'])
+                    'has_color' => false
                 ];
             } else {
                 $error = 'Failed to upload: ' . $originalName;
@@ -242,17 +242,17 @@ $user = getCurrentUser();
                     <div class="form-group">
                         <label class="form-label required">3D model files</label>
                         <div class="file-upload" id="file-dropzone">
-                            <input type="file" name="model_files[]" accept=".stl,.obj,.ply,.gltf,.glb,.3mf" multiple required>
+                            <input type="file" name="model_files[]" accept=".stl,.obj" multiple required>
                             <div class="file-upload-icon">
                                 <i class="fas fa-cloud-upload-alt"></i>
                             </div>
                             <div class="file-upload-text">
                                 <strong>Click to choose files</strong> or drag and drop<br>
-                                <small>Formats: STL, OBJ, PLY, GLTF/GLB, 3MF (max 50MB each)</small>
+                                <small>Formats: STL, OBJ (max 50MB each)</small>
                             </div>
                         </div>
                         <div class="form-hint" style="margin-top: 8px;">
-                            Color-ready formats: OBJ, PLY, GLTF/GLB, and 3MF can include full color data.
+                            All uploads are displayed with a flat color finish.
                         </div>
                     </div>
 
@@ -279,7 +279,7 @@ $user = getCurrentUser();
                             <span id="summary-formats" class="upload-stat-value">-</span>
                         </div>
                         <div class="upload-stat">
-                            <span class="upload-stat-label">Color Models</span>
+                            <span class="upload-stat-label">Flat Color Models</span>
                             <span id="summary-color" class="upload-stat-value">0</span>
                         </div>
                     </div>
@@ -517,11 +517,6 @@ $user = getCurrentUser();
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
     <script>
@@ -583,8 +578,7 @@ $user = getCurrentUser();
         });
 
         // Supported file extensions for 3D printing
-        const allowedExtensions = window.ALLOWED_EXTENSIONS || ['stl', 'obj', 'ply', 'gltf', 'glb', '3mf'];
-        const colorFormats = ['obj', 'ply', 'gltf', 'glb', '3mf'];
+        const allowedExtensions = window.ALLOWED_EXTENSIONS || ['stl', 'obj'];
 
         function handleFiles(files) {
             uploadedFiles = [];
@@ -646,13 +640,12 @@ $user = getCurrentUser();
             fileEmptyState.style.display = 'none';
             fileList.innerHTML = uploadedFiles.map((file, i) => {
                 const ext = file.name.split('.').pop().toLowerCase();
-                const hasColor = colorFormats.includes(ext);
                 return `
                 <div class="file-list-item${i === currentPreviewIndex ? ' selected' : ''}" data-index="${i}">
                     <div class="file-list-item-info">
-                        <i class="fas ${hasColor ? 'fa-palette' : 'fa-cube'}" style="color: ${hasColor ? 'var(--neon-magenta)' : 'var(--neon-cyan)'};"></i>
+                        <i class="fas fa-cube" style="color: var(--neon-cyan);"></i>
                         <span class="file-list-item-name">${file.name}</span>
-                        <span class="format-badge-mini ${hasColor ? 'format-color' : ''}">${ext.toUpperCase()}</span>
+                        <span class="format-badge-mini">${ext.toUpperCase()}</span>
                         <span class="file-list-item-size">${formatBytes(file.size)}</span>
                         <span class="file-list-item-status"><i class="fas fa-check-circle"></i> Ready</span>
                     </div>
@@ -760,18 +753,16 @@ $user = getCurrentUser();
             }
 
             const formats = new Set();
-            let colorCount = 0;
             uploadedFiles.forEach(file => {
                 const ext = file.name.split('.').pop().toLowerCase();
                 formats.add(ext.toUpperCase());
-                if (colorFormats.includes(ext)) colorCount++;
             });
 
             uploadSummary.style.display = 'block';
             summaryCount.textContent = uploadedFiles.length;
             summarySize.textContent = formatBytes(getTotalSize());
             summaryFormats.textContent = Array.from(formats).join(', ');
-            summaryColor.textContent = colorCount;
+            summaryColor.textContent = uploadedFiles.length;
             summaryFiles.innerHTML = uploadedFiles.map((file) => `
                 <li class="upload-summary-file">
                     <i class="fas fa-check-circle"></i>

@@ -205,7 +205,7 @@ switch ($action) {
 
         $file = $_FILES[$uploadKey];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowedExtensions = ['stl', 'obj', 'ply', 'gltf', 'glb', '3mf'];
+        $allowedExtensions = ['stl', 'obj'];
 
         if (!in_array($ext, $allowedExtensions, true)) {
             jsonResponse(['success' => false, 'error' => 'Unsupported format. Allowed: ' . strtoupper(implode(', ', $allowedExtensions))], 400);

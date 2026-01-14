@@ -200,9 +200,6 @@ foreach ($relatedModels as $index => $rm) {
                                 <div class="color-palette-panel" id="color-palette">
                                     <div class="palette-header">
                                         <span class="palette-title"><i class="fas fa-palette"></i> Colors</span>
-                                        <button class="restore-colors-btn" id="restore-colors-btn" title="Restore Original Colors">
-                                            <i class="fas fa-undo"></i>
-                                        </button>
                                     </div>
                                     <div class="palette-section">
                                         <div class="palette-label">Custom Color</div>
@@ -556,11 +553,6 @@ foreach ($relatedModels as $index => $rm) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
     <script>
@@ -704,7 +696,6 @@ foreach ($relatedModels as $index => $rm) {
             const colorPalette = document.getElementById('color-palette');
             const customColorInput = document.getElementById('custom-color-input');
             const applyCustomColor = document.getElementById('apply-custom-color');
-            const restoreColorsBtn = document.getElementById('restore-colors-btn');
 
             // Material picker
             const materialBtn = document.getElementById('material-picker-btn');
@@ -756,19 +747,6 @@ foreach ($relatedModels as $index => $rm) {
                         setTimeout(() => colorBtn.classList.remove('color-applied'), 500);
 
                         Toast.success('Custom color applied!');
-                    });
-                }
-
-                // Restore original colors
-                if (restoreColorsBtn) {
-                    restoreColorsBtn.addEventListener('click', () => {
-                        if (mainViewer && mainViewer.restoreOriginalColors) {
-                            mainViewer.restoreOriginalColors();
-                            Toast.info('Original colors restored');
-                        } else {
-                            Toast.warning('No original colors to restore');
-                        }
-                        colorPalette.classList.remove('active');
                     });
                 }
 
@@ -877,11 +855,7 @@ foreach ($relatedModels as $index => $rm) {
 
             viewer.loadModel(url).then(() => {
                 if (loading) loading.style.display = 'none';
-                // Only set color if it's not a format with embedded colors
-                const ext = url.split('.').pop().toLowerCase();
-                if (!['gltf', 'glb', 'ply', 'obj', '3mf'].includes(ext) || !viewer.hasVertexColors) {
-                    viewer.setColor(currentModelColor);
-                }
+                viewer.setColor(currentModelColor);
                 mainViewer = viewer;
             }).catch(err => {
                 Toast.error('Failed to load model');
@@ -929,10 +903,7 @@ foreach ($relatedModels as $index => $rm) {
 
             fullscreenViewer = new ModelViewer(fsCanvas, { modelColor: currentModelColor, autoRotate: true });
             fullscreenViewer.loadModel(currentModelUrl).then(() => {
-                const ext = currentModelUrl.split('.').pop().toLowerCase();
-                if (!['gltf', 'glb', 'ply', 'obj', '3mf'].includes(ext) || !fullscreenViewer.hasVertexColors) {
-                    fullscreenViewer.setColor(currentModelColor);
-                }
+                fullscreenViewer.setColor(currentModelColor);
             });
 
             // Setup fullscreen controls

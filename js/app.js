@@ -8,11 +8,7 @@
 // ============================================================================
 const SUPPORTED_FORMATS = {
     'stl': { name: 'STL', description: 'Stereolithography', hasColor: false },
-    'obj': { name: 'OBJ', description: 'Wavefront OBJ', hasColor: true },
-    'ply': { name: 'PLY', description: 'Polygon File Format', hasColor: true },
-    'gltf': { name: 'GLTF', description: 'GL Transmission Format', hasColor: true },
-    'glb': { name: 'GLB', description: 'GL Binary', hasColor: true },
-    '3mf': { name: '3MF', description: '3D Manufacturing Format', hasColor: true }
+    'obj': { name: 'OBJ', description: 'Wavefront OBJ', hasColor: false }
 };
 
 // ============================================================================
@@ -153,9 +149,7 @@ class ModelViewer {
         this.animationId = null;
         this.envMap = null;
         this.currentMaterial = null;
-        this.originalMaterials = null;
         this.modelFormat = 'stl';
-        this.hasVertexColors = false;
 
         this.init();
     }
@@ -363,16 +357,6 @@ class ModelViewer {
                 case 'obj':
                     await this.loadOBJ(url);
                     break;
-                case 'ply':
-                    await this.loadPLY(url);
-                    break;
-                case 'gltf':
-                case 'glb':
-                    await this.loadGLTF(url);
-                    break;
-                case '3mf':
-                    await this.load3MF(url);
-                    break;
                 default:
                     // Default to STL
                     await this.loadSTL(url);
@@ -441,7 +425,6 @@ class ModelViewer {
 
                     this.fitCameraToModel();
                     this.alignGridToModel();
-                    this.hasVertexColors = false;
 
                     resolve(geometry);
                 },
@@ -456,160 +439,14 @@ class ModelViewer {
         });
     }
 
-    // Load OBJ file (with optional MTL for materials/colors)
+    // Load OBJ file
     loadOBJ(url) {
         return new Promise((resolve, reject) => {
-            // Check for MTL file
-            const mtlUrl = url.replace(/\.obj$/i, '.mtl');
-
-            // Try to load with MTL first
-            const mtlLoader = new THREE.MTLLoader();
-            mtlLoader.load(
-                mtlUrl,
-                (materials) => {
-                    materials.preload();
-
-                    const objLoader = new THREE.OBJLoader();
-                    objLoader.setMaterials(materials);
-
-                    objLoader.load(
-                        url,
-                        (object) => {
-                            this.processLoadedModel(object, true);
-                            resolve(object);
-                        },
-                        (progress) => this.handleProgress(progress),
-                        (error) => reject(error)
-                    );
-                },
-                undefined,
-                () => {
-                    // No MTL file, load OBJ with default material
-                    const objLoader = new THREE.OBJLoader();
-                    objLoader.load(
-                        url,
-                        (object) => {
-                            this.processLoadedModel(object, false);
-                            resolve(object);
-                        },
-                        (progress) => this.handleProgress(progress),
-                        (error) => reject(error)
-                    );
-                }
-            );
-        });
-    }
-
-    // Load PLY file (supports vertex colors)
-    loadPLY(url) {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.PLYLoader();
-
-            loader.load(
-                url,
-                (geometry) => {
-                    geometry.computeBoundingBox();
-                    geometry.center();
-                    geometry.computeVertexNormals();
-
-                    // Check if geometry has vertex colors
-                    const hasColors = geometry.hasAttribute('color');
-                    this.hasVertexColors = hasColors;
-
-                    let material;
-                    if (hasColors) {
-                        // Use vertex colors from the file
-                        material = new THREE.MeshStandardMaterial({
-                            vertexColors: true,
-                            metalness: 0.1,
-                            roughness: 0.5,
-                            envMap: this.envMap,
-                            envMapIntensity: 0.5
-                        });
-                    } else {
-                        material = this.createMaterial(this.options.modelColor);
-                    }
-
-                    this.currentMaterial = material;
-                    this.mesh = new THREE.Mesh(geometry, material);
-                    this.mesh.castShadow = true;
-                    this.mesh.receiveShadow = true;
-                    this.model = this.mesh;
-                    this.scene.add(this.mesh);
-
-                    this.fitCameraToModel();
-                    this.alignGridToModel();
-
-                    resolve(geometry);
-                },
-                (progress) => this.handleProgress(progress),
-                (error) => reject(error)
-            );
-        });
-    }
-
-    // Load GLTF/GLB file (full material support)
-    loadGLTF(url) {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.GLTFLoader();
-
-            loader.load(
-                url,
-                (gltf) => {
-                    const model = gltf.scene;
-
-                    // Center the model
-                    const box = new THREE.Box3().setFromObject(model);
-                    const center = box.getCenter(new THREE.Vector3());
-                    model.position.sub(center);
-
-                    // Store original materials and add env map
-                    this.originalMaterials = [];
-                    model.traverse((child) => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-
-                            if (child.material) {
-                                this.originalMaterials.push({
-                                    mesh: child,
-                                    material: child.material.clone()
-                                });
-
-                                // Add environment map
-                                if (this.envMap && child.material.envMap !== undefined) {
-                                    child.material.envMap = this.envMap;
-                                    child.material.envMapIntensity = 0.5;
-                                    child.material.needsUpdate = true;
-                                }
-                            }
-                        }
-                    });
-
-                    this.model = model;
-                    this.hasVertexColors = true; // GLTF has its own colors
-                    this.scene.add(model);
-
-                    this.fitCameraToModel();
-                    this.alignGridToModel();
-
-                    resolve(gltf);
-                },
-                (progress) => this.handleProgress(progress),
-                (error) => reject(error)
-            );
-        });
-    }
-
-    // Load 3MF file (3D Manufacturing Format)
-    load3MF(url) {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.ThreeMFLoader();
-
-            loader.load(
+            const objLoader = new THREE.OBJLoader();
+            objLoader.load(
                 url,
                 (object) => {
-                    this.processLoadedModel(object, true);
+                    this.processLoadedModel(object);
                     resolve(object);
                 },
                 (progress) => this.handleProgress(progress),
@@ -618,80 +455,29 @@ class ModelViewer {
         });
     }
 
-    // Process loaded model (for OBJ, 3MF)
-    processLoadedModel(object, hasMaterials) {
+    // Process loaded model (for OBJ)
+    processLoadedModel(object) {
         // Center the model
         const box = new THREE.Box3().setFromObject(object);
         const center = box.getCenter(new THREE.Vector3());
         object.position.sub(center);
 
-        // Store original materials and setup
-        this.originalMaterials = [];
         object.traverse((child) => {
             if (child.isMesh) {
                 child.castShadow = true;
                 child.receiveShadow = true;
 
-                if (hasMaterials && child.material) {
-                    const originalMaterial = child.material;
-                    const normalizedMaterial = this.normalizeMaterial(originalMaterial);
-                    const clonedMaterial = Array.isArray(normalizedMaterial)
-                        ? normalizedMaterial.map((entry) => entry.clone())
-                        : normalizedMaterial.clone();
-
-                    this.originalMaterials.push({
-                        mesh: child,
-                        material: clonedMaterial
-                    });
-
-                    child.material = normalizedMaterial;
-
-                    // Add environment map
-                    if (this.envMap && child.material.envMap !== undefined) {
-                        child.material.envMap = this.envMap;
-                        child.material.envMapIntensity = 0.5;
-                        child.material.needsUpdate = true;
-                    }
-                } else {
-                    // Apply default material
-                    const material = this.createMaterial(this.options.modelColor);
-                    child.material = material;
-                }
+                // Apply default material
+                const material = this.createMaterial(this.options.modelColor);
+                child.material = material;
             }
         });
 
-        this.hasVertexColors = hasMaterials;
         this.model = object;
         this.scene.add(object);
 
         this.fitCameraToModel();
         this.alignGridToModel();
-    }
-
-    normalizeMaterial(material) {
-        if (Array.isArray(material)) {
-            return material.map((entry) => this.normalizeMaterial(entry));
-        }
-
-        if (material.isMeshPhongMaterial || material.isMeshLambertMaterial) {
-            return new THREE.MeshStandardMaterial({
-                color: material.color?.clone() || new THREE.Color(0xffffff),
-                map: material.map || null,
-                emissive: material.emissive?.clone() || new THREE.Color(0x000000),
-                emissiveMap: material.emissiveMap || null,
-                vertexColors: material.vertexColors || false,
-                transparent: material.transparent || false,
-                opacity: material.opacity ?? 1,
-                side: material.side ?? THREE.FrontSide,
-                roughness: material.roughness ?? 0.6,
-                metalness: material.metalness ?? 0.1,
-                flatShading: material.flatShading || false,
-                wireframe: material.wireframe || false,
-                name: material.name
-            });
-        }
-
-        return material;
     }
 
     // Handle loading progress
@@ -747,12 +533,10 @@ class ModelViewer {
                     }
                 }
             });
-
             this.model = null;
             this.mesh = null;
         }
 
-        this.originalMaterials = null;
         this.currentMaterial = null;
     }
 
@@ -782,39 +566,21 @@ class ModelViewer {
     setColor(color) {
         if (!this.model) return;
 
-        // For models with vertex colors, offer option to override or preserve
         this.model.traverse((child) => {
             if (child.isMesh && child.material) {
                 if (Array.isArray(child.material)) {
                     child.material.forEach(mat => {
                         mat.color.setHex(color);
-                        mat.vertexColors = false;
                         mat.needsUpdate = true;
                     });
                 } else {
                     child.material.color.setHex(color);
-                    child.material.vertexColors = false;
                     child.material.needsUpdate = true;
                 }
             }
         });
 
         this.options.modelColor = color;
-    }
-
-    // Restore original materials (for colored models)
-    restoreOriginalColors() {
-        if (!this.originalMaterials || !this.model) return;
-
-        this.originalMaterials.forEach(({ mesh, material }) => {
-            mesh.material = material.clone();
-            if (this.envMap && mesh.material.envMap !== undefined) {
-                mesh.material.envMap = this.envMap;
-                mesh.material.needsUpdate = true;
-            }
-        });
-
-        this.hasVertexColors = true;
     }
 
     // Set material preset
@@ -996,31 +762,9 @@ class ThumbnailViewer {
                 return this.loadSTL();
             case 'obj':
                 return this.loadOBJ();
-            case 'ply':
-                return this.loadPLY();
-            case 'gltf':
-            case 'glb':
-                return this.loadGLTF();
-            case '3mf':
-                return this.load3MF();
             default:
                 return this.loadSTL();
         }
-    }
-
-    load3MF() {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.ThreeMFLoader();
-            loader.load(
-                this.url,
-                (object) => {
-                    this.processModel(object);
-                    resolve();
-                },
-                undefined,
-                reject
-            );
-        });
     }
 
     loadSTL() {
@@ -1065,50 +809,6 @@ class ThumbnailViewer {
         });
     }
 
-    loadPLY() {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.PLYLoader();
-            loader.load(
-                this.url,
-                (geometry) => {
-                    geometry.computeBoundingBox();
-                    geometry.center();
-                    geometry.computeVertexNormals();
-
-                    const hasColors = geometry.hasAttribute('color');
-                    const material = new THREE.MeshPhysicalMaterial({
-                        color: hasColors ? 0xffffff : 0x00f0ff,
-                        vertexColors: hasColors,
-                        metalness: 0.1,
-                        roughness: 0.5
-                    });
-
-                    this.mesh = new THREE.Mesh(geometry, material);
-                    this.scene.add(this.mesh);
-                    this.positionCamera();
-                    resolve();
-                },
-                undefined,
-                reject
-            );
-        });
-    }
-
-    loadGLTF() {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.GLTFLoader();
-            loader.load(
-                this.url,
-                (gltf) => {
-                    this.processModel(gltf.scene);
-                    resolve();
-                },
-                undefined,
-                reject
-            );
-        });
-    }
-
     processModel(object) {
         const box = new THREE.Box3().setFromObject(object);
         const center = box.getCenter(new THREE.Vector3());
@@ -1116,25 +816,11 @@ class ThumbnailViewer {
 
         object.traverse((child) => {
             if (child.isMesh) {
-                if (child.material?.isMeshPhongMaterial || child.material?.isMeshLambertMaterial) {
-                    child.material = new THREE.MeshStandardMaterial({
-                        color: child.material.color || 0x00f0ff,
-                        map: child.material.map || null,
-                        emissive: child.material.emissive || new THREE.Color(0x000000),
-                        emissiveMap: child.material.emissiveMap || null,
-                        vertexColors: child.material.vertexColors || false,
-                        metalness: 0.1,
-                        roughness: 0.5,
-                        transparent: child.material.transparent || false,
-                        opacity: child.material.opacity ?? 1
-                    });
-                } else if (!child.material.map) {
-                    child.material = new THREE.MeshPhysicalMaterial({
-                        color: child.material.color || 0x00f0ff,
-                        metalness: 0.1,
-                        roughness: 0.5
-                    });
-                }
+                child.material = new THREE.MeshPhysicalMaterial({
+                    color: 0x00f0ff,
+                    metalness: 0.1,
+                    roughness: 0.5
+                });
             }
         });
 
@@ -1440,7 +1126,7 @@ class TagsInput {
 // ============================================================================
 
 // Supported file extensions for 3D printing
-const ALLOWED_EXTENSIONS = ['stl', 'obj', 'ply', 'gltf', 'glb', '3mf'];
+const ALLOWED_EXTENSIONS = ['stl', 'obj'];
 
 class FileUploader {
     constructor(dropzone, options = {}) {
