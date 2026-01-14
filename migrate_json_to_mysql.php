@@ -412,7 +412,10 @@ if (!empty($models)) {
     if (!$modelStmt || !$fileStmt || !$photoStmt) {
         outputMsg("❌ Failed to prepare model statements: " . $conn->error, 'error');
     } else {
+        outputMsg("✓ Model statements prepared successfully", 'success');
         foreach ($models as $model) {
+            outputMsg("  Processing model: {$model['title']}...", 'info');
+
             // Prepare data with proper null handling
             $tagsJson = json_encode($model['tags'] ?? []);
             $printSettingsJson = json_encode($model['print_settings'] ?? []);
@@ -430,22 +433,24 @@ if (!empty($models)) {
             $modelDesc = $model['description'] ?? '';
             $modelCategory = $model['category'];
             $modelFilename = $model['filename'] ?? '';
-            $modelFilesize = $model['filesize'] ?? 0;
+            $modelFilesize = (int)($model['filesize'] ?? 0);
             $modelThumbnail = $model['thumbnail'] ?? '';  // Handle null thumbnail
             $modelPhoto = $model['photo'] ?? '';  // Handle null/missing photo
             $modelPrimaryDisplay = $model['primary_display'] ?? 'auto';
             $modelLicense = $model['license'] ?? 'CC BY-NC';
-            $modelDownloads = $model['downloads'] ?? 0;
-            $modelLikes = $model['likes'] ?? 0;
-            $modelViews = $model['views'] ?? 0;
-            $modelFeatured = $model['featured'] ?? false;
+            $modelDownloads = (int)($model['downloads'] ?? 0);
+            $modelLikes = (int)($model['likes'] ?? 0);
+            $modelViews = (int)($model['views'] ?? 0);
+            $modelFeatured = (int)($model['featured'] ?? 0);  // Cast bool to int
+
+            outputMsg("    Binding parameters...", 'info');
 
             // Insert model
             // Type string: s=string, i=integer
             // Columns: id(s), user_id(s), title(s), description(s), category(s), tags(s), filename(s),
             //          filesize(i), file_count(i), thumbnail(s), photo(s), primary_display(s), license(s),
             //          print_settings(s), downloads(i), likes(i), views(i), featured(i), created_at(s), updated_at(s)
-            $modelStmt->bind_param(
+            $bindResult = $modelStmt->bind_param(
                 "sssssssiisssssiiiiss",
                 $modelId,
                 $modelUserId,
@@ -468,6 +473,12 @@ if (!empty($models)) {
                 $createdAt,
                 $updatedAt
             );
+
+            if (!$bindResult) {
+                outputMsg("    ❌ Bind failed: " . $modelStmt->error, 'error');
+                continue;
+            }
+            outputMsg("    Executing insert...", 'info');
 
             if ($modelStmt->execute()) {
                 $modelCount++;
