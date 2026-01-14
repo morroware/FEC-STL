@@ -118,8 +118,12 @@ if (USE_MYSQL) {
         foreach ($data as $key => $value) {
             if ($key === 'id') continue; // Don't update ID
             $fields[] = "`$key` = ?";
+            // Cast booleans to integers for MySQL
+            if (is_bool($value)) {
+                $value = (int)$value;
+            }
             $values[] = $value;
-            $types .= is_int($value) || is_bool($value) ? 'i' : 's';
+            $types .= is_int($value) ? 'i' : 's';
         }
 
         if (empty($fields)) return false;
@@ -252,6 +256,10 @@ if (USE_MYSQL) {
         foreach ($data as $key => $value) {
             if ($key === 'id') continue; // Don't update ID
             $fields[] = "`$key` = ?";
+            // Cast booleans to integers for MySQL
+            if (is_bool($value)) {
+                $value = (int)$value;
+            }
             $values[] = $value;
             $types .= is_int($value) ? 'i' : 's';
         }
@@ -477,16 +485,18 @@ if (USE_MYSQL) {
             ");
 
             foreach ($files as $index => $file) {
-                $hasColor = $file['has_color'] ?? false;
+                $hasColor = (int)($file['has_color'] ?? false);
+                $filesize = (int)$file['filesize'];
+                $fileOrder = (int)$index;
                 $fileStmt->bind_param(
                     "ssissii",
                     $id,
                     $file['filename'],
-                    $file['filesize'],
+                    $filesize,
                     $file['original_name'],
                     $file['extension'],
                     $hasColor,
-                    $index
+                    $fileOrder
                 );
                 $fileStmt->execute();
             }
@@ -501,8 +511,9 @@ if (USE_MYSQL) {
             ");
 
             foreach ($photos as $index => $photo) {
-                $isPrimary = ($index === 0);
-                $photoStmt->bind_param("ssii", $id, $photo, $isPrimary, $index);
+                $isPrimary = (int)($index === 0);
+                $photoOrder = (int)$index;
+                $photoStmt->bind_param("ssii", $id, $photo, $isPrimary, $photoOrder);
                 $photoStmt->execute();
             }
         }
@@ -534,8 +545,12 @@ if (USE_MYSQL) {
             }
 
             $fields[] = "`$key` = ?";
+            // Cast booleans to integers for MySQL
+            if (is_bool($value)) {
+                $value = (int)$value;
+            }
             $values[] = $value;
-            $types .= (is_int($value) || is_bool($value)) ? 'i' : 's';
+            $types .= is_int($value) ? 'i' : 's';
         }
 
         $fields[] = "updated_at = NOW()";
