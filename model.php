@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Model Detail View
+ * Community 3D Model Vault - Model Detail View
  */
 
 require_once __DIR__ . '/includes/config.php';
@@ -505,7 +505,7 @@ foreach ($relatedModels as $index => $rm) {
                     <a href="login.php">Sign In</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. Made for the FEC community.
+                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
                 </div>
             </div>
         </div>

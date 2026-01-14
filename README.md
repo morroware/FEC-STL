@@ -1,6 +1,6 @@
-# FEC STL Vault
+# Community 3D Model Vault
 
-FEC STL Vault is a PHP-based STL file sharing platform for Family Entertainment Center (FEC) operators. It supports browsing, uploading, and managing 3D printable parts with a JSON-backed data store.
+Community 3D Model Vault is a PHP-based 3D model sharing platform designed for communities, companies, and organizations. It supports browsing, uploading, and managing 3D printable models with a flexible hybrid MySQL/JSON data store.
 
 ## Features
 
@@ -38,19 +38,19 @@ FEC STL Vault is a PHP-based STL file sharing platform for Family Entertainment 
 
 1. **Clone the repo**:
    ```bash
-   git clone [repository] /var/www/html/fec-stl-vault
+   git clone [repository] /var/www/html/community-vault
    ```
 
 2. **Set permissions**:
    ```bash
-   chmod 755 /var/www/html/fec-stl-vault
-   chmod 775 /var/www/html/fec-stl-vault/data
-   chmod 775 /var/www/html/fec-stl-vault/uploads
+   chmod 755 /var/www/html/community-vault
+   chmod 775 /var/www/html/community-vault/data
+   chmod 775 /var/www/html/community-vault/uploads
    ```
 
 3. **Run locally (optional)**:
    ```bash
-   php -S localhost:8000 -t /var/www/html/fec-stl-vault
+   php -S localhost:8000 -t /var/www/html/community-vault
    ```
 
 4. **Open the app**:

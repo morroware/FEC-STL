@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Logout
+ * Community 3D Model Vault - Logout
  */
 
 require_once __DIR__ . '/includes/config.php';

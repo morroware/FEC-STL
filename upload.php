@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Upload Model
+ * Community 3D Model Vault - Upload Model
  */
 
 require_once __DIR__ . '/includes/config.php';
@@ -498,7 +498,7 @@ $user = getCurrentUser();
                     <a href="browse.php">Browse</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. Made for the FEC community.
+                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
                 </div>
             </div>
         </div>

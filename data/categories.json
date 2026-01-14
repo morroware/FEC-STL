@@ -31,7 +31,7 @@
         "id": "maintenance",
         "name": "Maintenance Tools",
         "icon": "fa-wrench",
-        "description": "Tools and jigs for FEC maintenance",
+        "description": "Tools and jigs for maintenance and repairs",
         "count": 0
     },
     {
@@ -52,7 +52,7 @@
         "id": "other",
         "name": "Other",
         "icon": "fa-cube",
-        "description": "Miscellaneous FEC-related prints",
+        "description": "Miscellaneous 3D printable models",
         "count": 1
     }
 ]

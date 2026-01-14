@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Homepage
+ * Community 3D Model Vault - Homepage
  */
 
 require_once __DIR__ . '/includes/config.php';
@@ -88,12 +88,12 @@ foreach ($trendingModels as $index => $model) {
                     <span class="text-gradient"><?= SITE_NAME ?></span>
                 </h1>
                 <p class="hero-subtitle">
-                    Discover, download, and share the latest FEC-ready 3D models for parts, repairs, and upgrades.
+                    Discover, download, and share high-quality 3D models for your community.
                 </p>
                 
                 <!-- Search Bar -->
                 <form class="search-bar" action="browse.php" method="GET">
-                    <input type="text" name="q" placeholder="Search for arcade parts, coin-op repairs, signage...">
+                    <input type="text" name="q" placeholder="Search for 3D models, parts, accessories...">
                     <button type="submit"><i class="fas fa-search"></i></button>
                 </form>
 
@@ -209,9 +209,9 @@ foreach ($trendingModels as $index => $model) {
 
             <div class="category-panel">
                 <div class="category-panel-copy">
-                    <span class="eyebrow">Find the perfect part fast</span>
-                    <h3>Filter by arcade use-case</h3>
-                    <p>Explore curated categories to spotlight the most essential models in the vault.</p>
+                    <span class="eyebrow">Find the perfect model fast</span>
+                    <h3>Filter by category</h3>
+                    <p>Explore curated categories to discover the most popular models in the vault.</p>
                 </div>
                 <form class="category-form" action="browse.php" method="GET">
                     <label for="category-select">Select a category</label>
@@ -331,7 +331,7 @@ foreach ($trendingModels as $index => $model) {
                     <a href="login.php">Sign In</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. Made for the FEC community.
+                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
                 </div>
             </div>
         </div>
