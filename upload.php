@@ -39,26 +39,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Title is required';
     } elseif (!$category) {
         $error = 'Please select a category';
-    } elseif (!isset($_FILES['stl_files']) || !is_array($_FILES['stl_files']['name']) || empty($_FILES['stl_files']['name'][0])) {
-        $error = 'Please upload at least one STL file';
+    } elseif (!isset($_FILES['model_files']) || !is_array($_FILES['model_files']['name']) || empty($_FILES['model_files']['name'][0])) {
+        $error = 'Please upload at least one 3D model file';
     } else {
         $uploadedFiles = [];
         $hasError = false;
 
+        // Supported 3D printing file formats
+        $allowedExtensions = ['stl', 'obj', 'ply', 'gltf', 'glb', '3mf'];
+
         // Process multiple files
-        $fileCount = count($_FILES['stl_files']['name']);
+        $fileCount = count($_FILES['model_files']['name']);
         $totalSize = 0;
 
         for ($i = 0; $i < $fileCount; $i++) {
-            if ($_FILES['stl_files']['error'][$i] !== UPLOAD_ERR_OK) continue;
+            if ($_FILES['model_files']['error'][$i] !== UPLOAD_ERR_OK) continue;
 
-            $originalName = $_FILES['stl_files']['name'][$i];
+            $originalName = $_FILES['model_files']['name'][$i];
             $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-            $size = $_FILES['stl_files']['size'][$i];
-            $tmpName = $_FILES['stl_files']['tmp_name'][$i];
+            $size = $_FILES['model_files']['size'][$i];
+            $tmpName = $_FILES['model_files']['tmp_name'][$i];
 
-            if ($ext !== 'stl') {
-                $error = 'Only STL files are allowed: ' . $originalName;
+            if (!in_array($ext, $allowedExtensions)) {
+                $error = 'Unsupported format: ' . $originalName . '. Allowed: ' . strtoupper(implode(', ', $allowedExtensions));
                 $hasError = true;
                 break;
             }
@@ -79,7 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $uploadedFiles[] = [
                     'filename' => $filename,
                     'filesize' => $size,
-                    'original_name' => pathinfo($originalName, PATHINFO_FILENAME)
+                    'original_name' => pathinfo($originalName, PATHINFO_FILENAME),
+                    'extension' => $ext,
+                    'has_color' => in_array($ext, ['obj', 'ply', 'gltf', 'glb', '3mf'])
                 ];
             } else {
                 $error = 'Failed to upload: ' . $originalName;
@@ -183,20 +188,28 @@ $user = getCurrentUser();
             <form method="POST" enctype="multipart/form-data" class="card" style="padding: 32px;">
                 <!-- Multi-File Upload -->
                 <div class="form-group">
-                    <label class="form-label required">STL Files</label>
+                    <label class="form-label required">3D Model Files</label>
                     <div class="file-upload" id="file-dropzone">
-                        <input type="file" name="stl_files[]" accept=".stl" multiple required>
+                        <input type="file" name="model_files[]" accept=".stl,.obj,.ply,.gltf,.glb,.3mf" multiple required>
                         <div class="file-upload-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <div class="file-upload-text">
                             <strong>Click to upload</strong> or drag and drop<br>
-                            <small>Select multiple STL files (max 50MB each)</small>
+                            <small>Supported: STL, OBJ, PLY, GLTF, GLB, 3MF (max 50MB each)</small>
                         </div>
                     </div>
                     <div class="form-hint" style="margin-top: 8px;">
-                        <i class="fas fa-lightbulb" style="color: var(--neon-yellow);"></i>
-                        Upload multiple STL files to create a project bundle (e.g., "Arcade Button Set")
+                        <i class="fas fa-palette" style="color: var(--neon-magenta);"></i>
+                        <strong>Color Support:</strong> OBJ, PLY, GLTF, GLB, and 3MF files can include full color data!
+                    </div>
+                    <div class="format-badges" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
+                        <span class="format-badge"><i class="fas fa-cube"></i> STL</span>
+                        <span class="format-badge format-color"><i class="fas fa-palette"></i> OBJ</span>
+                        <span class="format-badge format-color"><i class="fas fa-palette"></i> PLY</span>
+                        <span class="format-badge format-color"><i class="fas fa-palette"></i> GLTF</span>
+                        <span class="format-badge format-color"><i class="fas fa-palette"></i> GLB</span>
+                        <span class="format-badge format-color"><i class="fas fa-palette"></i> 3MF</span>
                     </div>
                 </div>
 
@@ -340,6 +353,11 @@ $user = getCurrentUser();
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
     <script>
@@ -385,14 +403,19 @@ $user = getCurrentUser();
             }
         });
 
+        // Supported file extensions for 3D printing
+        const ALLOWED_EXTENSIONS = ['stl', 'obj', 'ply', 'gltf', 'glb', '3mf'];
+        const COLOR_FORMATS = ['obj', 'ply', 'gltf', 'glb', '3mf'];
+
         function handleFiles(files) {
             uploadedFiles = [];
             let validFiles = [];
             let totalSize = 0;
 
             files.forEach(file => {
-                if (!file.name.toLowerCase().endsWith('.stl')) {
-                    Toast.error(`Only STL files allowed: ${file.name}`);
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (!ALLOWED_EXTENSIONS.includes(ext)) {
+                    Toast.error(`Unsupported format: ${file.name}. Allowed: ${ALLOWED_EXTENSIONS.join(', ').toUpperCase()}`);
                     return;
                 }
                 if (file.size > 50 * 1024 * 1024) {
@@ -424,18 +447,22 @@ $user = getCurrentUser();
             fileListContainer.style.display = 'block';
             fileCountSpan.textContent = uploadedFiles.length;
 
-            fileList.innerHTML = uploadedFiles.map((file, i) => `
+            fileList.innerHTML = uploadedFiles.map((file, i) => {
+                const ext = file.name.split('.').pop().toLowerCase();
+                const hasColor = COLOR_FORMATS.includes(ext);
+                return `
                 <div class="file-list-item" data-index="${i}">
                     <div class="file-list-item-info">
-                        <i class="fas fa-cube" style="color: var(--neon-cyan);"></i>
+                        <i class="fas ${hasColor ? 'fa-palette' : 'fa-cube'}" style="color: ${hasColor ? 'var(--neon-magenta)' : 'var(--neon-cyan)'};"></i>
                         <span class="file-list-item-name">${file.name}</span>
+                        <span class="format-badge-mini ${hasColor ? 'format-color' : ''}">${ext.toUpperCase()}</span>
                         <span class="file-list-item-size">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
                     <button type="button" class="file-list-item-preview btn btn-sm btn-outline" onclick="showPreview(${i})">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function updateFileTabs() {
@@ -476,11 +503,11 @@ $user = getCurrentUser();
                 viewer.dispose();
             }
 
-            viewer = new STLViewer(previewCanvas, { autoRotate: true });
-            viewer.loadSTL(url).then(() => {
+            viewer = new ModelViewer(previewCanvas, { autoRotate: true });
+            viewer.loadModel(url).then(() => {
                 // Success - model loaded
             }).catch(err => {
-                Toast.error('Failed to preview STL');
+                Toast.error('Failed to preview model');
                 console.error(err);
             });
         }

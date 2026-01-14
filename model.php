@@ -136,17 +136,106 @@ foreach ($relatedModels as $index => $rm) {
 
                         <!-- Toolbar (top-left) -->
                         <div class="viewer-toolbar">
+                            <!-- Color Picker -->
                             <div class="viewer-color-picker">
                                 <button class="color-picker-btn" id="color-picker-btn" title="Change Color"></button>
-                                <div class="color-palette" id="color-palette">
-                                    <div class="color-swatch" style="background: #00f0ff;" data-color="0x00f0ff"></div>
-                                    <div class="color-swatch" style="background: #ff00aa;" data-color="0xff00aa"></div>
-                                    <div class="color-swatch" style="background: #f0ff00;" data-color="0xf0ff00"></div>
-                                    <div class="color-swatch" style="background: #00ff88;" data-color="0x00ff88"></div>
-                                    <div class="color-swatch" style="background: #ff6b35;" data-color="0xff6b35"></div>
-                                    <div class="color-swatch" style="background: #a855f7;" data-color="0xa855f7"></div>
-                                    <div class="color-swatch" style="background: #ffffff;" data-color="0xffffff"></div>
-                                    <div class="color-swatch" style="background: #888888;" data-color="0x888888"></div>
+                                <div class="color-palette-panel" id="color-palette">
+                                    <div class="palette-header">
+                                        <span class="palette-title"><i class="fas fa-palette"></i> Colors</span>
+                                        <button class="restore-colors-btn" id="restore-colors-btn" title="Restore Original Colors">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    <div class="palette-section">
+                                        <div class="palette-label">Custom Color</div>
+                                        <div class="custom-color-row">
+                                            <input type="color" id="custom-color-input" value="#00f0ff" class="custom-color-input">
+                                            <button class="btn btn-sm btn-outline" id="apply-custom-color">Apply</button>
+                                        </div>
+                                    </div>
+                                    <div class="palette-section">
+                                        <div class="palette-label">Neon Colors</div>
+                                        <div class="color-grid">
+                                            <div class="color-swatch" style="background: #00f0ff;" data-color="0x00f0ff" title="Neon Cyan"></div>
+                                            <div class="color-swatch" style="background: #ff00aa;" data-color="0xff00aa" title="Neon Magenta"></div>
+                                            <div class="color-swatch" style="background: #f0ff00;" data-color="0xf0ff00" title="Neon Yellow"></div>
+                                            <div class="color-swatch" style="background: #00ff88;" data-color="0x00ff88" title="Neon Green"></div>
+                                            <div class="color-swatch" style="background: #0066ff;" data-color="0x0066ff" title="Electric Blue"></div>
+                                            <div class="color-swatch" style="background: #ff1493;" data-color="0xff1493" title="Hot Pink"></div>
+                                        </div>
+                                    </div>
+                                    <div class="palette-section">
+                                        <div class="palette-label">Standard</div>
+                                        <div class="color-grid">
+                                            <div class="color-swatch" style="background: #ff6b35;" data-color="0xff6b35" title="Orange"></div>
+                                            <div class="color-swatch" style="background: #a855f7;" data-color="0xa855f7" title="Purple"></div>
+                                            <div class="color-swatch" style="background: #ff3333;" data-color="0xff3333" title="Red"></div>
+                                            <div class="color-swatch" style="background: #ff7f50;" data-color="0xff7f50" title="Coral"></div>
+                                            <div class="color-swatch" style="background: #ffffff;" data-color="0xffffff" title="White"></div>
+                                            <div class="color-swatch" style="background: #888888;" data-color="0x888888" title="Gray"></div>
+                                        </div>
+                                    </div>
+                                    <div class="palette-section">
+                                        <div class="palette-label">Metallic</div>
+                                        <div class="color-grid">
+                                            <div class="color-swatch" style="background: #ffd700;" data-color="0xffd700" title="Gold"></div>
+                                            <div class="color-swatch" style="background: #c0c0c0;" data-color="0xc0c0c0" title="Silver"></div>
+                                            <div class="color-swatch" style="background: #cd7f32;" data-color="0xcd7f32" title="Bronze"></div>
+                                            <div class="color-swatch" style="background: #b87333;" data-color="0xb87333" title="Copper"></div>
+                                            <div class="color-swatch" style="background: #b76e79;" data-color="0xb76e79" title="Rose Gold"></div>
+                                            <div class="color-swatch" style="background: #1a1a1a;" data-color="0x1a1a1a" title="Black"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Material Selector -->
+                            <div class="viewer-material-picker">
+                                <button class="material-picker-btn" id="material-picker-btn" title="Material Finish">
+                                    <i class="fas fa-gem"></i>
+                                </button>
+                                <div class="material-panel" id="material-panel">
+                                    <div class="palette-header">
+                                        <span class="palette-title"><i class="fas fa-gem"></i> Material Finish</span>
+                                    </div>
+                                    <div class="material-grid">
+                                        <button class="material-btn active" data-material="default" title="Default">
+                                            <div class="material-preview default"></div>
+                                            <span>Default</span>
+                                        </button>
+                                        <button class="material-btn" data-material="pla" title="PLA - Matte plastic">
+                                            <div class="material-preview pla"></div>
+                                            <span>PLA</span>
+                                        </button>
+                                        <button class="material-btn" data-material="abs" title="ABS - Semi-gloss plastic">
+                                            <div class="material-preview abs"></div>
+                                            <span>ABS</span>
+                                        </button>
+                                        <button class="material-btn" data-material="petg" title="PETG - Glossy clear plastic">
+                                            <div class="material-preview petg"></div>
+                                            <span>PETG</span>
+                                        </button>
+                                        <button class="material-btn" data-material="resin" title="Resin - Ultra smooth glossy">
+                                            <div class="material-preview resin"></div>
+                                            <span>Resin</span>
+                                        </button>
+                                        <button class="material-btn" data-material="silk" title="Silk PLA - Shiny metallic">
+                                            <div class="material-preview silk"></div>
+                                            <span>Silk</span>
+                                        </button>
+                                        <button class="material-btn" data-material="metal" title="Metal - Full metallic finish">
+                                            <div class="material-preview metal"></div>
+                                            <span>Metal</span>
+                                        </button>
+                                        <button class="material-btn" data-material="matte" title="Matte - No reflections">
+                                            <div class="material-preview matte"></div>
+                                            <span>Matte</span>
+                                        </button>
+                                        <button class="material-btn" data-material="glow" title="Glow - Emissive effect">
+                                            <div class="material-preview glow"></div>
+                                            <span>Glow</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -407,6 +496,11 @@ foreach ($relatedModels as $index => $rm) {
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
     <script>
@@ -451,11 +545,19 @@ foreach ($relatedModels as $index => $rm) {
             // Color picker
             const colorBtn = document.getElementById('color-picker-btn');
             const colorPalette = document.getElementById('color-palette');
+            const customColorInput = document.getElementById('custom-color-input');
+            const applyCustomColor = document.getElementById('apply-custom-color');
+            const restoreColorsBtn = document.getElementById('restore-colors-btn');
+
+            // Material picker
+            const materialBtn = document.getElementById('material-picker-btn');
+            const materialPanel = document.getElementById('material-panel');
 
             if (colorBtn && colorPalette) {
                 colorBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     colorPalette.classList.toggle('active');
+                    materialPanel?.classList.remove('active');
                 });
 
                 colorPalette.addEventListener('click', (e) => {
@@ -464,17 +566,84 @@ foreach ($relatedModels as $index => $rm) {
                         const colorHex = parseInt(swatch.dataset.color);
                         currentModelColor = colorHex;
                         colorBtn.style.background = swatch.style.background;
+                        customColorInput.value = swatch.style.background;
 
                         if (mainViewer) {
                             mainViewer.setColor(colorHex);
                         }
                         colorPalette.classList.remove('active');
+                        Toast.success('Color applied!');
                     }
                 });
 
+                // Custom color picker
+                if (applyCustomColor && customColorInput) {
+                    applyCustomColor.addEventListener('click', () => {
+                        const hex = customColorInput.value;
+                        const colorHex = parseInt(hex.replace('#', '0x'));
+                        currentModelColor = colorHex;
+                        colorBtn.style.background = hex;
+
+                        if (mainViewer) {
+                            mainViewer.setColor(colorHex);
+                        }
+                        colorPalette.classList.remove('active');
+                        Toast.success('Custom color applied!');
+                    });
+                }
+
+                // Restore original colors
+                if (restoreColorsBtn) {
+                    restoreColorsBtn.addEventListener('click', () => {
+                        if (mainViewer && mainViewer.restoreOriginalColors) {
+                            mainViewer.restoreOriginalColors();
+                            Toast.info('Original colors restored');
+                        } else {
+                            Toast.warning('No original colors to restore');
+                        }
+                        colorPalette.classList.remove('active');
+                    });
+                }
+
                 // Close palette when clicking outside
-                document.addEventListener('click', () => {
-                    colorPalette.classList.remove('active');
+                document.addEventListener('click', (e) => {
+                    if (!colorPalette.contains(e.target) && e.target !== colorBtn) {
+                        colorPalette.classList.remove('active');
+                    }
+                });
+            }
+
+            // Material picker
+            if (materialBtn && materialPanel) {
+                materialBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    materialPanel.classList.toggle('active');
+                    colorPalette?.classList.remove('active');
+                });
+
+                materialPanel.querySelectorAll('.material-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const material = btn.dataset.material;
+
+                        // Update active state
+                        materialPanel.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+
+                        // Apply material
+                        if (mainViewer && mainViewer.setMaterialPreset) {
+                            mainViewer.setMaterialPreset(material);
+                            Toast.success(`${btn.querySelector('span').textContent} finish applied!`);
+                        }
+
+                        materialPanel.classList.remove('active');
+                    });
+                });
+
+                // Close panel when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!materialPanel.contains(e.target) && e.target !== materialBtn) {
+                        materialPanel.classList.remove('active');
+                    }
                 });
             }
 
@@ -535,13 +704,17 @@ foreach ($relatedModels as $index => $rm) {
             // Get or create viewer
             let viewer = viewerContainer._viewer;
             if (!viewer) {
-                viewer = new STLViewer(viewerContainer, { modelColor: currentModelColor });
+                viewer = new ModelViewer(viewerContainer, { modelColor: currentModelColor });
                 viewerContainer._viewer = viewer;
             }
 
-            viewer.loadSTL(url).then(() => {
+            viewer.loadModel(url).then(() => {
                 if (loading) loading.style.display = 'none';
-                viewer.setColor(currentModelColor);
+                // Only set color if it's not a format with embedded colors
+                const ext = url.split('.').pop().toLowerCase();
+                if (!['gltf', 'glb', 'ply', 'obj', '3mf'].includes(ext) || !viewer.hasVertexColors) {
+                    viewer.setColor(currentModelColor);
+                }
                 mainViewer = viewer;
             }).catch(err => {
                 Toast.error('Failed to load model');
@@ -587,9 +760,12 @@ foreach ($relatedModels as $index => $rm) {
                 fullscreenViewer.dispose();
             }
 
-            fullscreenViewer = new STLViewer(fsCanvas, { modelColor: currentModelColor, autoRotate: true });
-            fullscreenViewer.loadSTL(currentStlUrl).then(() => {
-                fullscreenViewer.setColor(currentModelColor);
+            fullscreenViewer = new ModelViewer(fsCanvas, { modelColor: currentModelColor, autoRotate: true });
+            fullscreenViewer.loadModel(currentStlUrl).then(() => {
+                const ext = currentStlUrl.split('.').pop().toLowerCase();
+                if (!['gltf', 'glb', 'ply', 'obj', '3mf'].includes(ext) || !fullscreenViewer.hasVertexColors) {
+                    fullscreenViewer.setColor(currentModelColor);
+                }
             });
 
             // Setup fullscreen controls
