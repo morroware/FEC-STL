@@ -218,79 +218,97 @@ function readJsonFile($file) {
 }
 
 // Migrate Categories
-echo "Migrating categories...\n";
+outputMsg("Migrating categories...", 'info');
 $categories = readJsonFile(OLD_CATEGORIES_FILE);
 $categoryCount = 0;
 
 if (!empty($categories)) {
     $stmt = $conn->prepare("INSERT INTO categories (id, name, icon, description, count) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), icon=VALUES(icon), description=VALUES(description), count=VALUES(count)");
 
-    foreach ($categories as $cat) {
-        $stmt->bind_param(
-            "ssssi",
-            $cat['id'],
-            $cat['name'],
-            $cat['icon'],
-            $cat['description'] ?? '',
-            $cat['count'] ?? 0
-        );
-        if ($stmt->execute()) {
-            $categoryCount++;
-            echo "  ✓ {$cat['name']}\n";
+    if (!$stmt) {
+        outputMsg("❌ Failed to prepare category statement: " . $conn->error, 'error');
+    } else {
+        foreach ($categories as $cat) {
+            $stmt->bind_param(
+                "ssssi",
+                $cat['id'],
+                $cat['name'],
+                $cat['icon'],
+                $cat['description'] ?? '',
+                $cat['count'] ?? 0
+            );
+            if ($stmt->execute()) {
+                $categoryCount++;
+                if ($isCli) {
+                    echo "  ✓ {$cat['name']}\n";
+                }
+            } else {
+                outputMsg("Failed to migrate category '{$cat['name']}': " . $stmt->error, 'error');
+            }
         }
+        $stmt->close();
     }
-    $stmt->close();
 }
-echo "✓ Migrated $categoryCount categories\n\n";
+outputMsg("✓ Migrated $categoryCount categories", 'success');
 
 // Migrate Users
-echo "Migrating users...\n";
+outputMsg("Migrating users...", 'info');
 $users = readJsonFile(OLD_USERS_FILE);
 $userCount = 0;
 
 if (!empty($users)) {
     $stmt = $conn->prepare("INSERT INTO users (id, username, email, password, is_admin, avatar, bio, location, created_at, model_count, download_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE username=VALUES(username), email=VALUES(email)");
 
-    foreach ($users as $user) {
-        $isAdmin = $user['is_admin'] ?? false;
-        $createdAt = $user['created_at'] ?? date('Y-m-d H:i:s');
+    if (!$stmt) {
+        outputMsg("❌ Failed to prepare user statement: " . $conn->error, 'error');
+    } else {
+        foreach ($users as $user) {
+            $isAdmin = $user['is_admin'] ?? false;
+            $createdAt = $user['created_at'] ?? date('Y-m-d H:i:s');
 
-        $stmt->bind_param(
-            "ssssisssiii",
-            $user['id'],
-            $user['username'],
-            $user['email'],
-            $user['password'],
-            $isAdmin,
-            $user['avatar'],
-            $user['bio'] ?? '',
-            $user['location'] ?? '',
-            $createdAt,
-            $user['model_count'] ?? 0,
-            $user['download_count'] ?? 0
-        );
+            $stmt->bind_param(
+                "ssssisssiii",
+                $user['id'],
+                $user['username'],
+                $user['email'],
+                $user['password'],
+                $isAdmin,
+                $user['avatar'],
+                $user['bio'] ?? '',
+                $user['location'] ?? '',
+                $createdAt,
+                $user['model_count'] ?? 0,
+                $user['download_count'] ?? 0
+            );
 
-        if ($stmt->execute()) {
-            $userCount++;
-            echo "  ✓ {$user['username']}\n";
-
-            // Migrate user favorites
-            if (!empty($user['favorites'])) {
-                $favStmt = $conn->prepare("INSERT IGNORE INTO favorites (user_id, model_id) VALUES (?, ?)");
-                foreach ($user['favorites'] as $modelId) {
-                    $favStmt->bind_param("ss", $user['id'], $modelId);
-                    $favStmt->execute();
+            if ($stmt->execute()) {
+                $userCount++;
+                if ($isCli) {
+                    echo "  ✓ {$user['username']}\n";
                 }
-                $favStmt->close();
+
+                // Migrate user favorites
+                if (!empty($user['favorites'])) {
+                    $favStmt = $conn->prepare("INSERT IGNORE INTO favorites (user_id, model_id) VALUES (?, ?)");
+                    if ($favStmt) {
+                        foreach ($user['favorites'] as $modelId) {
+                            $favStmt->bind_param("ss", $user['id'], $modelId);
+                            $favStmt->execute();
+                        }
+                        $favStmt->close();
+                    }
+                }
+            } else {
+                outputMsg("Failed to migrate user '{$user['username']}': " . $stmt->error, 'error');
             }
         }
+        $stmt->close();
     }
-    $stmt->close();
 }
-echo "✓ Migrated $userCount users\n\n";
+outputMsg("✓ Migrated $userCount users", 'success');
 
 // Migrate Models
-echo "Migrating models...\n";
+outputMsg("Migrating models...", 'info');
 $models = readJsonFile(OLD_MODELS_FILE);
 $modelCount = 0;
 
@@ -316,104 +334,120 @@ if (!empty($models)) {
         VALUES (?, ?, ?, ?)
     ");
 
-    foreach ($models as $model) {
-        // Prepare data
-        $tagsJson = json_encode($model['tags'] ?? []);
-        $printSettingsJson = json_encode($model['print_settings'] ?? []);
+    if (!$modelStmt || !$fileStmt || !$photoStmt) {
+        outputMsg("❌ Failed to prepare model statements: " . $conn->error, 'error');
+    } else {
+        foreach ($models as $model) {
+            // Prepare data
+            $tagsJson = json_encode($model['tags'] ?? []);
+            $printSettingsJson = json_encode($model['print_settings'] ?? []);
 
-        $fileCount = $model['file_count'] ?? count($model['files'] ?? []);
-        if ($fileCount == 0 && !empty($model['filename'])) $fileCount = 1;
+            $fileCount = $model['file_count'] ?? count($model['files'] ?? []);
+            if ($fileCount == 0 && !empty($model['filename'])) $fileCount = 1;
 
-        $createdAt = $model['created_at'] ?? date('Y-m-d H:i:s');
-        $updatedAt = $model['updated_at'] ?? $createdAt;
+            $createdAt = $model['created_at'] ?? date('Y-m-d H:i:s');
+            $updatedAt = $model['updated_at'] ?? $createdAt;
 
-        // Insert model
-        $modelStmt->bind_param(
-            "sssssssississiiisss",
-            $model['id'],
-            $model['user_id'],
-            $model['title'],
-            $model['description'] ?? '',
-            $model['category'],
-            $tagsJson,
-            $model['filename'] ?? '',
-            $model['filesize'] ?? 0,
-            $fileCount,
-            $model['thumbnail'],
-            $model['photo'],
-            $model['primary_display'] ?? 'auto',
-            $model['license'] ?? 'CC BY-NC',
-            $printSettingsJson,
-            $model['downloads'] ?? 0,
-            $model['likes'] ?? 0,
-            $model['views'] ?? 0,
-            $model['featured'] ?? false,
-            $createdAt,
-            $updatedAt
-        );
+            // Insert model
+            $modelStmt->bind_param(
+                "sssssssississiiisss",
+                $model['id'],
+                $model['user_id'],
+                $model['title'],
+                $model['description'] ?? '',
+                $model['category'],
+                $tagsJson,
+                $model['filename'] ?? '',
+                $model['filesize'] ?? 0,
+                $fileCount,
+                $model['thumbnail'],
+                $model['photo'],
+                $model['primary_display'] ?? 'auto',
+                $model['license'] ?? 'CC BY-NC',
+                $printSettingsJson,
+                $model['downloads'] ?? 0,
+                $model['likes'] ?? 0,
+                $model['views'] ?? 0,
+                $model['featured'] ?? false,
+                $createdAt,
+                $updatedAt
+            );
 
-        if ($modelStmt->execute()) {
-            $modelCount++;
-            echo "  ✓ {$model['title']}\n";
+            if ($modelStmt->execute()) {
+                $modelCount++;
+                if ($isCli) {
+                    echo "  ✓ {$model['title']}\n";
+                }
 
-            // Migrate files
-            if (!empty($model['files'])) {
-                foreach ($model['files'] as $index => $file) {
-                    $hasColor = $file['has_color'] ?? false;
-                    $extension = $file['extension'] ?? pathinfo($file['filename'], PATHINFO_EXTENSION);
+                // Migrate files
+                if (!empty($model['files'])) {
+                    foreach ($model['files'] as $index => $file) {
+                        $hasColor = $file['has_color'] ?? false;
+                        $extension = $file['extension'] ?? pathinfo($file['filename'], PATHINFO_EXTENSION);
 
+                        $fileStmt->bind_param(
+                            "ssissii",
+                            $model['id'],
+                            $file['filename'],
+                            $file['filesize'],
+                            $file['original_name'] ?? $file['filename'],
+                            $extension,
+                            $hasColor,
+                            $index
+                        );
+                        if (!$fileStmt->execute()) {
+                            outputMsg("Failed to migrate file '{$file['filename']}' for model '{$model['title']}': " . $fileStmt->error, 'error');
+                        }
+                    }
+                } elseif (!empty($model['filename'])) {
+                    // Legacy single file
+                    $extension = pathinfo($model['filename'], PATHINFO_EXTENSION);
                     $fileStmt->bind_param(
                         "ssissii",
                         $model['id'],
-                        $file['filename'],
-                        $file['filesize'],
-                        $file['original_name'] ?? $file['filename'],
+                        $model['filename'],
+                        $model['filesize'] ?? 0,
+                        $model['filename'],
                         $extension,
-                        $hasColor,
-                        $index
+                        false,
+                        0
                     );
-                    $fileStmt->execute();
+                    if (!$fileStmt->execute()) {
+                        outputMsg("Failed to migrate legacy file for model '{$model['title']}': " . $fileStmt->error, 'error');
+                    }
                 }
-            } elseif (!empty($model['filename'])) {
-                // Legacy single file
-                $extension = pathinfo($model['filename'], PATHINFO_EXTENSION);
-                $fileStmt->bind_param(
-                    "ssissii",
-                    $model['id'],
-                    $model['filename'],
-                    $model['filesize'] ?? 0,
-                    $model['filename'],
-                    $extension,
-                    false,
-                    0
-                );
-                $fileStmt->execute();
-            }
 
-            // Migrate photos
-            if (!empty($model['photos'])) {
-                foreach ($model['photos'] as $index => $photo) {
-                    $isPrimary = ($index === 0);
-                    $photoStmt->bind_param("ssii", $model['id'], $photo, $isPrimary, $index);
-                    $photoStmt->execute();
+                // Migrate photos
+                if (!empty($model['photos'])) {
+                    foreach ($model['photos'] as $index => $photo) {
+                        $isPrimary = ($index === 0);
+                        $photoStmt->bind_param("ssii", $model['id'], $photo, $isPrimary, $index);
+                        if (!$photoStmt->execute()) {
+                            outputMsg("Failed to migrate photo '{$photo}' for model '{$model['title']}': " . $photoStmt->error, 'error');
+                        }
+                    }
+                } elseif (!empty($model['photo'])) {
+                    // Legacy single photo
+                    $photoStmt->bind_param("ssii", $model['id'], $model['photo'], true, 0);
+                    if (!$photoStmt->execute()) {
+                        outputMsg("Failed to migrate legacy photo for model '{$model['title']}': " . $photoStmt->error, 'error');
+                    }
                 }
-            } elseif (!empty($model['photo'])) {
-                // Legacy single photo
-                $photoStmt->bind_param("ssii", $model['id'], $model['photo'], true, 0);
-                $photoStmt->execute();
+            } else {
+                outputMsg("Failed to migrate model '{$model['title']}': " . $modelStmt->error, 'error');
             }
         }
-    }
 
-    $modelStmt->close();
-    $fileStmt->close();
-    $photoStmt->close();
+        $modelStmt->close();
+        $fileStmt->close();
+        $photoStmt->close();
+    }
 }
-echo "✓ Migrated $modelCount models\n\n";
+outputMsg("✓ Migrated $modelCount models", 'success');
 
 // Update category counts
-echo "Recalculating category counts...\n";
-$conn->query("
+outputMsg("Recalculating category counts...", 'info');
+$result = $conn->query("
     UPDATE categories c
     SET c.count = (
         SELECT COUNT(*)
@@ -421,7 +455,11 @@ $conn->query("
         WHERE m.category = c.id
     )
 ");
-outputMsg("✓ Category counts updated", 'success');
+if ($result) {
+    outputMsg("✓ Category counts updated", 'success');
+} else {
+    outputMsg("❌ Failed to update category counts: " . $conn->error, 'error');
+}
 
 if (!$isCli) {
     echo '</div>'; // Close progress div
