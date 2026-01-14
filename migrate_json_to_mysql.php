@@ -325,19 +325,30 @@ if (!empty($users)) {
             $isAdmin = $user['is_admin'] ?? false;
             $createdAt = $user['created_at'] ?? date('Y-m-d H:i:s');
 
+            // Extract values with proper null handling for bind_param
+            $userId = $user['id'];
+            $username = $user['username'];
+            $email = $user['email'];
+            $password = $user['password'];
+            $avatar = $user['avatar'] ?? '';  // Handle null avatar
+            $bio = $user['bio'] ?? '';
+            $location = $user['location'] ?? '';
+            $modelCount = $user['model_count'] ?? 0;
+            $downloadCount = $user['download_count'] ?? 0;
+
             $stmt->bind_param(
                 "ssssissssii",
-                $user['id'],
-                $user['username'],
-                $user['email'],
-                $user['password'],
+                $userId,
+                $username,
+                $email,
+                $password,
                 $isAdmin,
-                $user['avatar'],
-                $user['bio'] ?? '',
-                $user['location'] ?? '',
+                $avatar,
+                $bio,
+                $location,
                 $createdAt,
-                $user['model_count'] ?? 0,
-                $user['download_count'] ?? 0
+                $modelCount,
+                $downloadCount
             );
 
             if ($stmt->execute()) {
@@ -402,7 +413,7 @@ if (!empty($models)) {
         outputMsg("❌ Failed to prepare model statements: " . $conn->error, 'error');
     } else {
         foreach ($models as $model) {
-            // Prepare data
+            // Prepare data with proper null handling
             $tagsJson = json_encode($model['tags'] ?? []);
             $printSettingsJson = json_encode($model['print_settings'] ?? []);
 
@@ -412,27 +423,44 @@ if (!empty($models)) {
             $createdAt = $model['created_at'] ?? date('Y-m-d H:i:s');
             $updatedAt = $model['updated_at'] ?? $createdAt;
 
+            // Extract values with proper null handling for bind_param
+            $modelId = $model['id'];
+            $modelUserId = $model['user_id'];
+            $modelTitle = $model['title'];
+            $modelDesc = $model['description'] ?? '';
+            $modelCategory = $model['category'];
+            $modelFilename = $model['filename'] ?? '';
+            $modelFilesize = $model['filesize'] ?? 0;
+            $modelThumbnail = $model['thumbnail'] ?? '';  // Handle null thumbnail
+            $modelPhoto = $model['photo'] ?? '';  // Handle null/missing photo
+            $modelPrimaryDisplay = $model['primary_display'] ?? 'auto';
+            $modelLicense = $model['license'] ?? 'CC BY-NC';
+            $modelDownloads = $model['downloads'] ?? 0;
+            $modelLikes = $model['likes'] ?? 0;
+            $modelViews = $model['views'] ?? 0;
+            $modelFeatured = $model['featured'] ?? false;
+
             // Insert model
             $modelStmt->bind_param(
                 "sssssssississiiisss",
-                $model['id'],
-                $model['user_id'],
-                $model['title'],
-                $model['description'] ?? '',
-                $model['category'],
+                $modelId,
+                $modelUserId,
+                $modelTitle,
+                $modelDesc,
+                $modelCategory,
                 $tagsJson,
-                $model['filename'] ?? '',
-                $model['filesize'] ?? 0,
+                $modelFilename,
+                $modelFilesize,
                 $fileCount,
-                $model['thumbnail'],
-                $model['photo'],
-                $model['primary_display'] ?? 'auto',
-                $model['license'] ?? 'CC BY-NC',
+                $modelThumbnail,
+                $modelPhoto,
+                $modelPrimaryDisplay,
+                $modelLicense,
                 $printSettingsJson,
-                $model['downloads'] ?? 0,
-                $model['likes'] ?? 0,
-                $model['views'] ?? 0,
-                $model['featured'] ?? false,
+                $modelDownloads,
+                $modelLikes,
+                $modelViews,
+                $modelFeatured,
                 $createdAt,
                 $updatedAt
             );
