@@ -24,9 +24,9 @@ $offset = ($page - 1) * $limit;
 $models = array_slice($models, $offset, $limit);
 
 // Add author info
-foreach ($models as &$model) {
+foreach ($models as $index => $model) {
     $user = getUser($model['user_id']);
-    $model['author'] = $user ? $user['username'] : 'Unknown';
+    $models[$index]['author'] = $user ? $user['username'] : 'Unknown';
 }
 
 // Page title

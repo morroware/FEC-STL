@@ -35,9 +35,9 @@ $relatedModels = array_slice(array_filter(
     fn($m) => $m['id'] !== $modelId
 ), 0, 4);
 
-foreach ($relatedModels as &$rm) {
+foreach ($relatedModels as $index => $rm) {
     $u = getUser($rm['user_id']);
-    $rm['author'] = $u ? $u['username'] : 'Unknown';
+    $relatedModels[$index]['author'] = $u ? $u['username'] : 'Unknown';
 }
 ?>
 <!DOCTYPE html>

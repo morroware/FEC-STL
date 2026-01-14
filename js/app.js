@@ -56,11 +56,9 @@ class STLViewer {
         // Lighting
         this.setupLighting();
         
-        // Grid
-        this.addGrid();
-        
         // Handle resize
-        window.addEventListener('resize', () => this.onResize());
+        this.handleResize = () => this.onResize();
+        window.addEventListener('resize', this.handleResize);
         
         // Start animation
         this.animate();
@@ -85,12 +83,6 @@ class STLViewer {
         const rimLight = new THREE.DirectionalLight(0xff00aa, 0.2);
         rimLight.position.set(0, -50, -50);
         this.scene.add(rimLight);
-    }
-    
-    addGrid() {
-        const gridHelper = new THREE.GridHelper(100, 20, 0x2a2a3a, 0x1a1a25);
-        gridHelper.rotation.x = Math.PI / 2;
-        this.scene.add(gridHelper);
     }
     
     loadSTL(url) {
@@ -157,7 +149,7 @@ class STLViewer {
         this.controls.target.set(0, 0, 0);
         this.controls.update();
     }
-    
+
     setColor(color) {
         if (this.mesh) {
             this.mesh.material.color.setHex(color);
@@ -195,7 +187,7 @@ class STLViewer {
     
     dispose() {
         cancelAnimationFrame(this.animationId);
-        window.removeEventListener('resize', this.onResize);
+        window.removeEventListener('resize', this.handleResize);
         
         if (this.mesh) {
             this.scene.remove(this.mesh);
@@ -222,6 +214,8 @@ class ThumbnailViewer {
     init() {
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
+
+        this.container.innerHTML = '';
         
         // Scene
         this.scene = new THREE.Scene();
@@ -245,36 +239,48 @@ class ThumbnailViewer {
         this.scene.add(directional);
         
         // Load STL
-        this.loadSTL();
+        this.loadSTL().catch(() => {
+            this.container.innerHTML = '<i class="fas fa-cube"></i>';
+        });
         
         // Animate
         this.animate();
     }
     
     loadSTL() {
-        const loader = new THREE.STLLoader();
-        loader.load(this.stlUrl, (geometry) => {
-            geometry.computeBoundingBox();
-            geometry.center();
-            geometry.computeVertexNormals();
-            
-            const material = new THREE.MeshPhongMaterial({
-                color: 0x00f0ff,
-                specular: 0x444444,
-                shininess: 50
-            });
-            
-            this.mesh = new THREE.Mesh(geometry, material);
-            this.scene.add(this.mesh);
-            
-            // Position camera
-            const box = new THREE.Box3().setFromObject(this.mesh);
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const distance = maxDim * 2;
-            
-            this.camera.position.set(distance * 0.5, distance * 0.3, distance * 0.5);
-            this.camera.lookAt(0, 0, 0);
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.STLLoader();
+            loader.load(
+                this.stlUrl,
+                (geometry) => {
+                    geometry.computeBoundingBox();
+                    geometry.center();
+                    geometry.computeVertexNormals();
+                    
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x00f0ff,
+                        specular: 0x444444,
+                        shininess: 50
+                    });
+                    
+                    this.mesh = new THREE.Mesh(geometry, material);
+                    this.scene.add(this.mesh);
+                    
+                    // Position camera
+                    const box = new THREE.Box3().setFromObject(this.mesh);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const distance = maxDim * 2;
+                    
+                    this.camera.position.set(distance * 0.5, distance * 0.3, distance * 0.5);
+                    this.camera.lookAt(0, 0, 0);
+                    resolve();
+                },
+                undefined,
+                (error) => {
+                    reject(error);
+                }
+            );
         });
     }
     
@@ -653,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const viewer = new STLViewer(container);
             viewer.loadSTL(url).then(() => {
                 // Hide loading indicator
-                const loading = container.querySelector('.viewer-loading');
+                const loading = container.closest('.viewer-container')?.querySelector('.viewer-loading');
                 if (loading) loading.style.display = 'none';
             }).catch(err => {
                 console.error('Failed to load STL:', err);

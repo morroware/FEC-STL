@@ -867,6 +867,14 @@ h4 { font-size: 1.25rem; }
     margin: 0 auto 32px;
 }
 
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+
 .hero-stats {
     display: flex;
     justify-content: center;
@@ -1450,12 +1458,27 @@ h4 { font-size: 1.25rem; }
 }
 
 @media (max-width: 768px) {
+    .hero {
+        padding: 56px 0 40px;
+    }
+
+    .hero::before {
+        width: 420px;
+        height: 420px;
+    }
+
     .hero-title {
         font-size: 2.5rem;
     }
     
     .hero-stats {
         gap: 30px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
     }
     
     .hero-stat-value {
@@ -1488,10 +1511,23 @@ h4 { font-size: 1.25rem; }
     .hero-title {
         font-size: 2rem;
     }
+
+    .hero-subtitle {
+        font-size: 1rem;
+    }
     
     .hero-stats {
         flex-direction: column;
         gap: 20px;
+    }
+
+    .hero-actions {
+        width: 100%;
+    }
+
+    .hero-actions .btn {
+        width: 100%;
+        justify-content: center;
     }
     
     .auth-card {
