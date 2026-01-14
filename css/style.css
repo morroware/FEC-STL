@@ -2599,3 +2599,268 @@ kbd {
         height: 36px;
     }
 }
+
+/* ============================================================================
+   MODEL PLACEHOLDER & PHOTO DISPLAY
+   ============================================================================ */
+
+/* Placeholder when 3D preview fails */
+.model-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--bg-dark), var(--bg-card));
+    color: var(--text-muted);
+    gap: 12px;
+}
+
+.model-placeholder i {
+    font-size: 4rem;
+    color: var(--border-color);
+    opacity: 0.6;
+}
+
+.model-placeholder .placeholder-format {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    padding: 6px 16px;
+    background: rgba(0, 240, 255, 0.1);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    border-radius: var(--radius-md);
+}
+
+.model-placeholder .placeholder-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.placeholder-active canvas {
+    display: none !important;
+}
+
+/* Photo placeholder (when user uploads a photo) */
+.model-photo-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-dark);
+}
+
+.model-photo-placeholder .model-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.model-photo-placeholder .photo-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--neon-magenta);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--neon-magenta);
+}
+
+/* Photo upload section styles */
+.photo-upload-section {
+    background: linear-gradient(135deg, rgba(255, 0, 170, 0.05), rgba(0, 240, 255, 0.05));
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    text-align: center;
+    transition: all var(--transition-normal);
+}
+
+.photo-upload-section:hover {
+    border-color: var(--neon-magenta);
+    background: linear-gradient(135deg, rgba(255, 0, 170, 0.08), rgba(0, 240, 255, 0.08));
+}
+
+.photo-upload-section .upload-icon {
+    font-size: 2.5rem;
+    color: var(--neon-magenta);
+    margin-bottom: 12px;
+}
+
+.photo-upload-section .upload-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.photo-upload-section .upload-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.photo-upload-section input[type="file"] {
+    display: none;
+}
+
+.photo-upload-section label {
+    cursor: pointer;
+    display: block;
+}
+
+/* Photo preview thumbnail */
+.photo-preview {
+    position: relative;
+    width: 100%;
+    max-width: 300px;
+    margin: 16px auto 0;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 2px solid var(--neon-magenta);
+}
+
+.photo-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.photo-preview .remove-photo {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 68, 102, 0.9);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.photo-preview .remove-photo:hover {
+    background: var(--error);
+    transform: scale(1.1);
+}
+
+/* Model card with photo */
+.model-card-preview.has-photo {
+    position: relative;
+}
+
+.model-card-preview.has-photo .preview-photo {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.model-card-preview.has-photo .preview-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.model-card-preview .photo-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    color: var(--neon-magenta);
+    z-index: 3;
+}
+
+/* View mode toggle for model page */
+.view-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.view-mode-btn {
+    flex: 1;
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.view-mode-btn:hover {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+.view-mode-btn.active {
+    background: rgba(0, 240, 255, 0.1);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+.view-mode-btn.photo-mode.active {
+    background: rgba(255, 0, 170, 0.1);
+    border-color: var(--neon-magenta);
+    color: var(--neon-magenta);
+}
+
+/* Photo gallery in model view */
+.model-photo-gallery {
+    display: none;
+    position: relative;
+    min-height: 400px;
+    background: var(--bg-dark);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.model-photo-gallery.active {
+    display: block;
+}
+
+.model-photo-gallery img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.model-photo-gallery .gallery-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    gap: 12px;
+}
+
+.model-photo-gallery .gallery-empty i {
+    font-size: 3rem;
+    opacity: 0.5;
+}

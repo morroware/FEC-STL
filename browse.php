@@ -163,14 +163,26 @@ if ($query) {
                         <?php
                         $category = getCategory($model['category']);
                         $fileCount = $model['file_count'] ?? 1;
+                        $hasPhoto = !empty($model['photo']);
                         ?>
                         <div class="card model-card">
-                            <div class="model-card-preview">
+                            <div class="model-card-preview <?= $hasPhoto ? 'has-photo' : '' ?>">
+                                <?php if ($hasPhoto): ?>
+                                <!-- Show uploaded photo as thumbnail -->
+                                <div class="preview-photo">
+                                    <img src="uploads/<?= sanitize($model['photo']) ?>" alt="<?= sanitize($model['title']) ?>">
+                                </div>
+                                <div class="photo-indicator">
+                                    <i class="fas fa-camera"></i> Photo
+                                </div>
+                                <?php else: ?>
+                                <!-- Show 3D preview placeholder -->
                                 <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
                                     <i class="fas fa-cube"></i>
                                 </div>
+                                <?php endif; ?>
                                 <?php if ($fileCount > 1): ?>
-                                <div style="position: absolute; top: 12px; right: 12px;">
+                                <div style="position: absolute; top: 12px; right: 12px; z-index: 3;">
                                     <span class="file-count-badge"><?= $fileCount ?> files</span>
                                 </div>
                                 <?php endif; ?>

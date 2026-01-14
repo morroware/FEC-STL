@@ -347,8 +347,10 @@ class ModelViewer {
     }
 
     // Load model based on file format
-    async loadModel(url, format = null) {
+    async loadModel(url, format = null, photoUrl = null) {
         this.modelFormat = format || this.getFileExtension(url);
+        this.modelUrl = url;
+        this.photoUrl = photoUrl;
 
         // Remove existing model
         this.clearModel();
@@ -379,8 +381,41 @@ class ModelViewer {
             return true;
         } catch (error) {
             console.error('Failed to load model:', error);
+            // Show placeholder on error
+            this.showPlaceholder();
             throw error;
         }
+    }
+
+    // Show placeholder image when 3D preview fails
+    showPlaceholder(message = null) {
+        // Clear the renderer
+        if (this.renderer) {
+            this.renderer.domElement.style.display = 'none';
+        }
+
+        // Check if we have a photo to display
+        if (this.photoUrl) {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'model-photo-placeholder';
+            placeholder.innerHTML = `
+                <img src="${this.photoUrl}" alt="Model Photo" class="model-photo">
+                <div class="photo-badge"><i class="fas fa-camera"></i> Photo</div>
+            `;
+            this.container.appendChild(placeholder);
+        } else {
+            // Show generic placeholder
+            const placeholder = document.createElement('div');
+            placeholder.className = 'model-placeholder';
+            placeholder.innerHTML = `
+                <i class="fas fa-cube"></i>
+                <span class="placeholder-format">${this.modelFormat.toUpperCase()}</span>
+                <span class="placeholder-text">${message || 'Preview unavailable'}</span>
+            `;
+            this.container.appendChild(placeholder);
+        }
+
+        this.container.classList.add('placeholder-active');
     }
 
     // Load STL file
@@ -896,11 +931,22 @@ class ThumbnailViewer {
 
         // Load model
         this.loadModel().catch(() => {
-            this.container.innerHTML = '<i class="fas fa-cube"></i>';
+            this.showPlaceholder();
         });
 
         // Animate
         this.animate();
+    }
+
+    showPlaceholder() {
+        // Show a styled placeholder when model fails to load
+        this.container.innerHTML = `
+            <div class="model-placeholder">
+                <i class="fas fa-cube"></i>
+                <span class="placeholder-format">${this.getFileExtension(this.url).toUpperCase()}</span>
+            </div>
+        `;
+        this.container.classList.add('placeholder-active');
     }
 
     getFileExtension(url) {
