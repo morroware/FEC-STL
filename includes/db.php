@@ -381,9 +381,21 @@ function deleteModel(string $id): bool {
     if (writeJsonFile(MODELS_FILE, array_values($models))) {
         updateCategoryCount($model['category'], -1);
         
-        // Delete file
-        $filepath = UPLOADS_DIR . $model['filename'];
-        if (file_exists($filepath)) unlink($filepath);
+        // Delete files
+        $files = $model['files'] ?? [];
+        if (empty($files) && !empty($model['filename'])) {
+            $files = [['filename' => $model['filename']]];
+        }
+        foreach ($files as $file) {
+            $filepath = UPLOADS_DIR . ($file['filename'] ?? '');
+            if ($filepath && file_exists($filepath)) unlink($filepath);
+        }
+
+        // Delete preview images
+        foreach (($model['images'] ?? []) as $image) {
+            $imagePath = UPLOADS_DIR . $image;
+            if (file_exists($imagePath)) unlink($imagePath);
+        }
         
         return true;
     }

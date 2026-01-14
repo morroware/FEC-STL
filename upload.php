@@ -43,10 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please upload at least one 3D model file';
     } else {
         $uploadedFiles = [];
+        $uploadedImages = [];
         $hasError = false;
+        $maxPhotoSize = 10 * 1024 * 1024;
 
         // Supported 3D printing file formats
         $allowedExtensions = ['stl', 'obj', 'ply', 'gltf', 'glb', '3mf'];
+        $allowedImageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
         // Process multiple files
         $fileCount = count($_FILES['model_files']['name']);
@@ -93,6 +96,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        if (!$hasError && !empty($_FILES['model_photo']) && $_FILES['model_photo']['error'] !== UPLOAD_ERR_NO_FILE) {
+            if ($_FILES['model_photo']['error'] !== UPLOAD_ERR_OK) {
+                $error = 'Failed to upload photo';
+                $hasError = true;
+            } else {
+                $photoName = $_FILES['model_photo']['name'];
+                $photoExt = strtolower(pathinfo($photoName, PATHINFO_EXTENSION));
+                $photoSize = $_FILES['model_photo']['size'];
+                $photoTmp = $_FILES['model_photo']['tmp_name'];
+
+                if (!in_array($photoExt, $allowedImageExtensions)) {
+                    $error = 'Unsupported photo format. Allowed: ' . strtoupper(implode(', ', $allowedImageExtensions));
+                    $hasError = true;
+                } elseif ($photoSize > $maxPhotoSize) {
+                    $error = 'Photo too large (max 10MB)';
+                    $hasError = true;
+                } elseif (!getimagesize($photoTmp)) {
+                    $error = 'Uploaded photo is not a valid image';
+                    $hasError = true;
+                } else {
+                    $photoFilename = generateId() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $photoName);
+                    $photoPath = UPLOADS_DIR . $photoFilename;
+
+                    if (move_uploaded_file($photoTmp, $photoPath)) {
+                        $uploadedImages[] = $photoFilename;
+                    } else {
+                        $error = 'Failed to save photo';
+                        $hasError = true;
+                    }
+                }
+            }
+        }
+
         if (!$hasError && !empty($uploadedFiles)) {
             $modelId = createModel([
                 'user_id' => $_SESSION['user_id'],
@@ -101,6 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'category' => $category,
                 'tags' => $tags,
                 'files' => $uploadedFiles,
+                'images' => $uploadedImages,
+                'thumbnail' => $uploadedImages[0] ?? null,
                 'license' => $license,
                 'print_settings' => $printSettings
             ]);
@@ -112,12 +150,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($uploadedFiles as $file) {
                     @unlink(UPLOADS_DIR . $file['filename']);
                 }
+                foreach ($uploadedImages as $image) {
+                    @unlink(UPLOADS_DIR . $image);
+                }
                 $error = 'Failed to create model. Please try again.';
             }
-        } elseif ($hasError && !empty($uploadedFiles)) {
+        } elseif ($hasError && (!empty($uploadedFiles) || !empty($uploadedImages))) {
             // Cleanup any successfully uploaded files if there was an error
             foreach ($uploadedFiles as $file) {
                 @unlink(UPLOADS_DIR . $file['filename']);
+            }
+            foreach ($uploadedImages as $image) {
+                @unlink(UPLOADS_DIR . $image);
             }
         }
     }
@@ -226,6 +270,14 @@ $user = getCurrentUser();
                     <div class="viewer-container" style="height: 300px;">
                         <div class="viewer-canvas" id="upload-preview"></div>
                     </div>
+                </div>
+
+                <!-- Optional Photo -->
+                <div class="form-group">
+                    <label class="form-label">Printed Model Photo (optional)</label>
+                    <input type="file" name="model_photo" class="form-input"
+                           accept=".jpg,.jpeg,.png,.webp">
+                    <div class="form-hint">Add a real-life photo to use as the preview image (max 10MB).</div>
                 </div>
 
                 <!-- Title -->
@@ -503,12 +555,19 @@ $user = getCurrentUser();
                 viewer.dispose();
             }
 
+            previewCanvas.innerHTML = '';
             viewer = new ModelViewer(previewCanvas, { autoRotate: true });
             viewer.loadModel(url).then(() => {
                 // Success - model loaded
             }).catch(err => {
                 Toast.error('Failed to preview model');
                 console.error(err);
+                if (window.renderPreviewFallback) {
+                    window.renderPreviewFallback(previewCanvas, {
+                        title: 'Preview unavailable',
+                        message: 'Try downloading the file to view details.'
+                    });
+                }
             });
         }
     </script>

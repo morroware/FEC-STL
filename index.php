@@ -127,12 +127,20 @@ foreach ($trendingModels as $index => $model) {
 
                 <div class="model-grid">
                     <?php foreach ($trendingModels as $tm): ?>
-                        <?php $category = getCategory($tm['category']); ?>
+                        <?php
+                        $category = getCategory($tm['category']);
+                        $previewImage = $tm['thumbnail'] ?? ($tm['images'][0] ?? null);
+                        ?>
                         <div class="card model-card">
                             <div class="model-card-preview">
-                                <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($tm['filename']) ?>">
-                                    <i class="fas fa-cube"></i>
-                                </div>
+                                <?php if ($previewImage): ?>
+                                    <img class="preview-image" src="uploads/<?= sanitize($previewImage) ?>"
+                                         alt="<?= sanitize($tm['title']) ?> preview" data-fallback="preview">
+                                <?php else: ?>
+                                    <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($tm['filename']) ?>">
+                                        <i class="fas fa-cube"></i>
+                                    </div>
+                                <?php endif; ?>
                                 <?php if (($tm['file_count'] ?? 1) > 1): ?>
                                 <div style="position: absolute; top: 12px; right: 12px;">
                                     <span class="file-count-badge"><?= $tm['file_count'] ?> files</span>
@@ -245,12 +253,18 @@ foreach ($trendingModels as $index => $model) {
                         <?php
                         $category = getCategory($model['category']);
                         $fileCount = $model['file_count'] ?? 1;
+                        $previewImage = $model['thumbnail'] ?? ($model['images'][0] ?? null);
                         ?>
                         <div class="card model-card">
                             <div class="model-card-preview">
-                                <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
-                                    <i class="fas fa-cube"></i>
-                                </div>
+                                <?php if ($previewImage): ?>
+                                    <img class="preview-image" src="uploads/<?= sanitize($previewImage) ?>"
+                                         alt="<?= sanitize($model['title']) ?> preview" data-fallback="preview">
+                                <?php else: ?>
+                                    <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($model['filename']) ?>">
+                                        <i class="fas fa-cube"></i>
+                                    </div>
+                                <?php endif; ?>
                                 <?php if ($fileCount > 1): ?>
                                 <div style="position: absolute; top: 12px; right: 12px;">
                                     <span class="file-count-badge"><?= $fileCount ?> files</span>

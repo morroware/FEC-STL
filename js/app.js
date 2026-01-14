@@ -15,6 +15,35 @@ const SUPPORTED_FORMATS = {
     '3mf': { name: '3MF', description: '3D Manufacturing Format', hasColor: true }
 };
 
+const PREVIEW_FALLBACK_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a0f"/>
+      <stop offset="100%" stop-color="#1a1f2b"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="360" fill="url(#bg)" />
+  <circle cx="240" cy="150" r="60" fill="#1f2937" stroke="#00f0ff" stroke-width="3"/>
+  <path d="M210 150h60l-30 40z" fill="#00f0ff"/>
+  <text x="240" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#9ca3af">
+    Preview unavailable
+  </text>
+</svg>
+`;
+const PREVIEW_FALLBACK_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponent(PREVIEW_FALLBACK_SVG)}`;
+
+function renderPreviewFallback(container, { title = 'Preview unavailable', message = 'Use the file download to view details.' } = {}) {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="preview-fallback">
+            <img src="${PREVIEW_FALLBACK_IMAGE}" alt="${title}">
+            <div class="preview-fallback-title">${title}</div>
+            <div class="preview-fallback-text">${message}</div>
+        </div>
+    `;
+}
+
 // ============================================================================
 // MATERIAL PRESETS FOR 3D PRINTING VISUALIZATION
 // ============================================================================
@@ -896,7 +925,10 @@ class ThumbnailViewer {
 
         // Load model
         this.loadModel().catch(() => {
-            this.container.innerHTML = '<i class="fas fa-cube"></i>';
+            renderPreviewFallback(this.container, {
+                title: 'Preview unavailable',
+                message: 'Open the model page or download the file to view.'
+            });
         });
 
         // Animate
@@ -921,6 +953,8 @@ class ThumbnailViewer {
             case 'gltf':
             case 'glb':
                 return this.loadGLTF();
+            case '3mf':
+                return this.load3MF();
             default:
                 return this.loadSTL();
         }
@@ -1004,6 +1038,21 @@ class ThumbnailViewer {
                 this.url,
                 (gltf) => {
                     this.processModel(gltf.scene);
+                    resolve();
+                },
+                undefined,
+                reject
+            );
+        });
+    }
+
+    load3MF() {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.ThreeMFLoader();
+            loader.load(
+                this.url,
+                (object) => {
+                    this.processModel(object);
                     resolve();
                 },
                 undefined,
@@ -1459,6 +1508,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(err => {
                 console.error('Failed to load model:', err);
                 Toast.error('Failed to load 3D model');
+                const loading = container.closest('.viewer-container')?.querySelector('.viewer-loading');
+                if (loading) loading.style.display = 'none';
+                renderPreviewFallback(container, {
+                    title: '3D preview unavailable',
+                    message: 'Try downloading the file or add a photo of the print.'
+                });
             });
 
             // Store reference
@@ -1472,6 +1527,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (url) {
             new ThumbnailViewer(container, url);
         }
+    });
+
+    document.querySelectorAll('img[data-fallback="preview"]').forEach(img => {
+        img.addEventListener('error', () => {
+            if (img.dataset.fallbackApplied) return;
+            img.dataset.fallbackApplied = 'true';
+            img.src = PREVIEW_FALLBACK_IMAGE;
+        });
     });
 
     // Viewer controls
@@ -1538,3 +1601,5 @@ window.MATERIAL_PRESETS = MATERIAL_PRESETS;
 window.COLOR_PALETTE = COLOR_PALETTE;
 window.SUPPORTED_FORMATS = SUPPORTED_FORMATS;
 window.ALLOWED_EXTENSIONS = ALLOWED_EXTENSIONS;
+window.PREVIEW_FALLBACK_IMAGE = PREVIEW_FALLBACK_IMAGE;
+window.renderPreviewFallback = renderPreviewFallback;

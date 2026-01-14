@@ -106,6 +106,8 @@ foreach ($relatedModels as $index => $rm) {
                     // Get files array (support both old single-file and new multi-file format)
                     $files = $model['files'] ?? [['filename' => $model['filename'], 'original_name' => pathinfo($model['filename'], PATHINFO_FILENAME), 'filesize' => $model['filesize']]];
                     $fileCount = count($files);
+                    $modelImages = $model['images'] ?? [];
+                    $previewImage = $model['thumbnail'] ?? ($modelImages[0] ?? null);
                     ?>
 
                     <?php if ($fileCount > 1): ?>
@@ -271,6 +273,15 @@ foreach ($relatedModels as $index => $rm) {
                         <span class="kbd-hint"><kbd>F</kbd> Fullscreen</span>
                         <span class="kbd-hint"><kbd>S</kbd> Screenshot</span>
                     </div>
+
+                    <?php if ($previewImage): ?>
+                        <div class="card model-photo-card">
+                            <img src="uploads/<?= sanitize($previewImage) ?>"
+                                 alt="<?= sanitize($model['title']) ?> printed photo"
+                                 data-fallback="preview">
+                            <div class="photo-caption">Printed model photo</div>
+                        </div>
+                    <?php endif; ?>
 
                     <!-- Fullscreen Viewer -->
                     <div class="viewer-fullscreen" id="fullscreen-viewer">
@@ -442,11 +453,17 @@ foreach ($relatedModels as $index => $rm) {
                     
                     <div class="model-grid">
                         <?php foreach ($relatedModels as $rm): ?>
+                            <?php $relatedPreview = $rm['thumbnail'] ?? ($rm['images'][0] ?? null); ?>
                             <div class="card model-card">
                                 <div class="model-card-preview">
-                                    <div class="preview-placeholder">
-                                        <i class="fas fa-cube"></i>
-                                    </div>
+                                    <?php if ($relatedPreview): ?>
+                                        <img class="preview-image" src="uploads/<?= sanitize($relatedPreview) ?>"
+                                             alt="<?= sanitize($rm['title']) ?> preview" data-fallback="preview">
+                                    <?php else: ?>
+                                        <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($rm['filename']) ?>">
+                                            <i class="fas fa-cube"></i>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="model-card-overlay">
                                         <div class="model-card-actions">
                                             <a href="model.php?id=<?= $rm['id'] ?>" class="btn btn-primary btn-sm">

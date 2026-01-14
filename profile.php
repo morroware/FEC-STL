@@ -203,12 +203,20 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                 <?php else: ?>
                     <div class="model-grid">
                         <?php foreach ($userModels as $model): ?>
-                            <?php $category = getCategory($model['category']); ?>
+                            <?php
+                            $category = getCategory($model['category']);
+                            $previewImage = $model['thumbnail'] ?? ($model['images'][0] ?? null);
+                            ?>
                             <div class="card model-card">
                                 <div class="model-card-preview">
-                                    <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
-                                        <i class="fas fa-cube"></i>
-                                    </div>
+                                    <?php if ($previewImage): ?>
+                                        <img class="preview-image" src="uploads/<?= sanitize($previewImage) ?>"
+                                             alt="<?= sanitize($model['title']) ?> preview" data-fallback="preview">
+                                    <?php else: ?>
+                                        <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($model['filename']) ?>">
+                                            <i class="fas fa-cube"></i>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="model-card-overlay">
                                         <div class="model-card-actions">
                                             <a href="model.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-sm">
@@ -254,12 +262,20 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                     <?php else: ?>
                         <div class="model-grid">
                             <?php foreach ($favorites as $model): ?>
-                                <?php $category = getCategory($model['category']); ?>
+                                <?php
+                                $category = getCategory($model['category']);
+                                $previewImage = $model['thumbnail'] ?? ($model['images'][0] ?? null);
+                                ?>
                                 <div class="card model-card">
                                     <div class="model-card-preview">
-                                        <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
-                                            <i class="fas fa-cube"></i>
-                                        </div>
+                                        <?php if ($previewImage): ?>
+                                            <img class="preview-image" src="uploads/<?= sanitize($previewImage) ?>"
+                                                 alt="<?= sanitize($model['title']) ?> preview" data-fallback="preview">
+                                        <?php else: ?>
+                                            <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($model['filename']) ?>">
+                                                <i class="fas fa-cube"></i>
+                                            </div>
+                                        <?php endif; ?>
                                         <div class="model-card-overlay">
                                             <div class="model-card-actions">
                                                 <a href="model.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-sm">
