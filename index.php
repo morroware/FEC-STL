@@ -6,7 +6,6 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 
-$stats = getStats();
 $categories = getCategories();
 $recentModels = searchModels('', null, 'newest');
 $recentModels = array_slice($recentModels, 0, 8);
@@ -80,7 +79,7 @@ foreach ($recentModels as $index => $model) {
                     <span class="text-gradient"><?= SITE_NAME ?></span>
                 </h1>
                 <p class="hero-subtitle">
-                    The community-driven library for Family Entertainment Center owners to share 3D printable parts, repairs, and upgrades.
+                    Discover, download, and share the latest FEC-ready 3D models for parts, repairs, and upgrades.
                 </p>
                 
                 <!-- Search Bar -->
@@ -96,22 +95,6 @@ foreach ($recentModels as $index => $model) {
                     <a href="#recent-models" class="btn btn-secondary btn-lg">
                         <i class="fas fa-clock"></i> Recent Uploads
                     </a>
-                </div>
-                
-                <!-- Stats -->
-                <div class="hero-stats">
-                    <div class="hero-stat">
-                        <div class="hero-stat-value"><?= number_format($stats['total_models']) ?></div>
-                        <div class="hero-stat-label">Models</div>
-                    </div>
-                    <div class="hero-stat">
-                        <div class="hero-stat-value"><?= number_format($stats['total_users']) ?></div>
-                        <div class="hero-stat-label">Makers</div>
-                    </div>
-                    <div class="hero-stat">
-                        <div class="hero-stat-value"><?= number_format($stats['total_downloads']) ?></div>
-                        <div class="hero-stat-label">Downloads</div>
-                    </div>
                 </div>
             </div>
         </section>
