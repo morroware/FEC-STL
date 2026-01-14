@@ -12,9 +12,9 @@ $recentModels = searchModels('', null, 'newest');
 $recentModels = array_slice($recentModels, 0, 8);
 
 // Add author info to models
-foreach ($recentModels as &$model) {
+foreach ($recentModels as $index => $model) {
     $user = getUser($model['user_id']);
-    $model['author'] = $user ? $user['username'] : 'Unknown';
+    $recentModels[$index]['author'] = $user ? $user['username'] : 'Unknown';
 }
 ?>
 <!DOCTYPE html>
