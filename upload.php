@@ -227,7 +227,7 @@ $user = getCurrentUser();
                 </div>
             <?php endif; ?>
 
-            <form method="POST" enctype="multipart/form-data" class="card upload-card">
+            <form method="POST" enctype="multipart/form-data" class="card upload-card" id="upload-form">
                 <!-- Multi-File Upload -->
                 <div class="upload-step">
                     <div class="upload-step-header">
@@ -330,6 +330,8 @@ $user = getCurrentUser();
                     <div class="viewer-container" style="min-height: 350px; position: relative;">
                         <div class="viewer-loading" id="preview-loading" style="display: none;">
                             <div class="spinner"></div>
+                            <div class="viewer-loading-text">Loading 3D model...</div>
+                            <div class="viewer-loading-progress">Please wait</div>
                         </div>
                         <div class="viewer-canvas" id="upload-preview" style="width: 100%; height: 350px;"></div>
                     </div>
@@ -1055,6 +1057,247 @@ $user = getCurrentUser();
             originalHandleFiles(files);
             updatePrimaryDisplayOptions();
         };
+
+        // ====================================================================
+        // AJAX FORM SUBMISSION WITH UPLOAD PROGRESS
+        // ====================================================================
+
+        const uploadForm = document.getElementById('upload-form');
+        const submitButton = uploadForm.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.innerHTML;
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validate required fields
+            const title = uploadForm.querySelector('input[name="title"]').value.trim();
+            const category = uploadForm.querySelector('select[name="category"]').value;
+
+            if (!title) {
+                Toast.error('Please enter a title for your model');
+                uploadForm.querySelector('input[name="title"]').focus();
+                return;
+            }
+
+            if (!category) {
+                Toast.error('Please select a category');
+                uploadForm.querySelector('select[name="category"]').focus();
+                return;
+            }
+
+            if (uploadedFiles.length === 0) {
+                Toast.error('Please upload at least one 3D model file');
+                return;
+            }
+
+            // Show upload overlay
+            showUploadProgress();
+
+            // Disable submit button
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+            try {
+                // Create FormData from form
+                const formData = new FormData(uploadForm);
+
+                // Upload with progress tracking
+                await uploadWithProgress(formData);
+            } catch (error) {
+                console.error('Upload error:', error);
+                Toast.error(error.message || 'Upload failed. Please try again.');
+                hideUploadProgress();
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+            }
+        });
+
+        function showUploadProgress() {
+            const overlay = document.createElement('div');
+            overlay.id = 'upload-progress-overlay';
+            overlay.className = 'upload-progress-overlay';
+            overlay.innerHTML = `
+                <div class="upload-progress-modal">
+                    <div class="upload-progress-header">
+                        <i class="fas fa-upload"></i>
+                        <h3>Uploading Your Model</h3>
+                    </div>
+                    <div class="upload-progress-content">
+                        <div class="upload-progress-bar-container">
+                            <div class="upload-progress-bar" id="upload-progress-bar">
+                                <div class="upload-progress-fill" id="upload-progress-fill"></div>
+                            </div>
+                            <div class="upload-progress-text">
+                                <span id="upload-progress-percent">0%</span>
+                                <span id="upload-progress-status">Preparing upload...</span>
+                            </div>
+                        </div>
+                        <div class="upload-file-status" id="upload-file-status">
+                            ${uploadedFiles.map((file, i) => `
+                                <div class="upload-file-status-item" data-file-index="${i}">
+                                    <i class="fas fa-cube"></i>
+                                    <span class="file-name">${file.name}</span>
+                                    <span class="file-status" id="file-status-${i}">
+                                        <i class="fas fa-clock"></i> Waiting...
+                                    </span>
+                                </div>
+                            `).join('')}
+                            ${uploadedPhotos.length > 0 ? `
+                                <div class="upload-file-status-item" data-file-type="photos">
+                                    <i class="fas fa-camera"></i>
+                                    <span class="file-name">${uploadedPhotos.length} photo${uploadedPhotos.length > 1 ? 's' : ''}</span>
+                                    <span class="file-status" id="file-status-photos">
+                                        <i class="fas fa-clock"></i> Waiting...
+                                    </span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="upload-progress-footer">
+                        <small>Please don't close this window while uploading</small>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            document.body.style.overflow = 'hidden';
+
+            // Trigger animation
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+            });
+        }
+
+        function hideUploadProgress() {
+            const overlay = document.getElementById('upload-progress-overlay');
+            if (overlay) {
+                overlay.classList.remove('active');
+                setTimeout(() => {
+                    overlay.remove();
+                    document.body.style.overflow = '';
+                }, 300);
+            }
+        }
+
+        function updateUploadProgress(percent, status) {
+            const fill = document.getElementById('upload-progress-fill');
+            const percentText = document.getElementById('upload-progress-percent');
+            const statusText = document.getElementById('upload-progress-status');
+
+            if (fill) fill.style.width = percent + '%';
+            if (percentText) percentText.textContent = Math.round(percent) + '%';
+            if (statusText) statusText.textContent = status;
+        }
+
+        function updateFileStatus(index, status, iconClass = 'fa-spinner fa-spin') {
+            const statusEl = document.getElementById('file-status-' + index);
+            if (statusEl) {
+                statusEl.innerHTML = `<i class="fas ${iconClass}"></i> ${status}`;
+            }
+        }
+
+        async function uploadWithProgress(formData) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                // Track upload progress
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total) * 100;
+                        updateUploadProgress(percent, 'Uploading files...');
+
+                        // Update individual file statuses based on progress
+                        const fileCount = uploadedFiles.length;
+                        const progressPerFile = 100 / fileCount;
+                        const currentFileIndex = Math.min(Math.floor(percent / progressPerFile), fileCount - 1);
+
+                        // Mark previous files as complete
+                        for (let i = 0; i < currentFileIndex; i++) {
+                            updateFileStatus(i, 'Uploaded', 'fa-check-circle');
+                        }
+
+                        // Mark current file as uploading
+                        if (currentFileIndex >= 0 && currentFileIndex < fileCount) {
+                            updateFileStatus(currentFileIndex, 'Uploading...', 'fa-spinner fa-spin');
+                        }
+
+                        // Update photos status if near completion
+                        if (uploadedPhotos.length > 0 && percent > 80) {
+                            const photosStatus = document.getElementById('file-status-photos');
+                            if (photosStatus) {
+                                photosStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                            }
+                        }
+                    }
+                });
+
+                // Handle completion
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        // Mark all files as complete
+                        uploadedFiles.forEach((file, i) => {
+                            updateFileStatus(i, 'Complete', 'fa-check-circle');
+                        });
+                        if (uploadedPhotos.length > 0) {
+                            const photosStatus = document.getElementById('file-status-photos');
+                            if (photosStatus) {
+                                photosStatus.innerHTML = '<i class="fas fa-check-circle"></i> Complete';
+                            }
+                        }
+
+                        updateUploadProgress(100, 'Processing...');
+
+                        // Check for PHP errors in response
+                        const responseText = xhr.responseText;
+
+                        // Check if response starts with error HTML
+                        if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<')) {
+                            // PHP error occurred - extract error message if possible
+                            const errorMatch = responseText.match(/<div class="alert alert-error"[^>]*>([\s\S]*?)<\/div>/i);
+                            if (errorMatch) {
+                                const errorDiv = document.createElement('div');
+                                errorDiv.innerHTML = errorMatch[1];
+                                const errorText = errorDiv.textContent.trim();
+                                hideUploadProgress();
+                                reject(new Error(errorText || 'Upload failed'));
+                                return;
+                            }
+                        }
+
+                        // Success - show completion message
+                        updateUploadProgress(100, 'Upload complete! Redirecting...');
+
+                        setTimeout(() => {
+                            // Form was submitted successfully, let browser handle redirect
+                            // Extract model ID from redirect if present in HTML
+                            const redirectMatch = responseText.match(/model\.php\?id=([a-zA-Z0-9]+)/);
+                            if (redirectMatch) {
+                                window.location.href = 'model.php?id=' + redirectMatch[1];
+                            } else {
+                                // Fallback: just submit the form normally
+                                uploadForm.submit();
+                            }
+                        }, 500);
+
+                        resolve();
+                    } else {
+                        reject(new Error('Upload failed with status: ' + xhr.status));
+                    }
+                });
+
+                // Handle errors
+                xhr.addEventListener('error', () => {
+                    reject(new Error('Network error occurred during upload'));
+                });
+
+                xhr.addEventListener('abort', () => {
+                    reject(new Error('Upload was cancelled'));
+                });
+
+                // Send request
+                xhr.open('POST', uploadForm.action || window.location.href);
+                xhr.send(formData);
+            });
+        }
     </script>
 </body>
 </html>

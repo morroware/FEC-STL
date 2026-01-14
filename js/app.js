@@ -795,8 +795,17 @@ const Toast = {
         document.body.appendChild(this.container);
     },
 
-    show(message, type = 'info', duration = 4000) {
+    show(message, type = 'info', duration = null) {
         if (!this.container) this.init();
+
+        // Smart duration based on message length
+        if (duration === null) {
+            const baseTime = 4000;
+            const wordsPerMinute = 200;
+            const words = message.split(' ').length;
+            const readingTime = (words / wordsPerMinute) * 60000; // Convert to ms
+            duration = Math.max(baseTime, Math.min(readingTime + 2000, 10000)); // Between 4s and 10s
+        }
 
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
@@ -818,20 +827,31 @@ const Toast = {
         toast.innerHTML = `
             <i class="fas ${icons[type]}" style="color: ${colors[type]}"></i>
             <span>${message}</span>
+            <button class="toast-dismiss" aria-label="Dismiss">&times;</button>
         `;
 
         this.container.appendChild(toast);
 
-        setTimeout(() => {
+        // Dismiss button handler
+        const dismissBtn = toast.querySelector('.toast-dismiss');
+        const removeToast = () => {
             toast.style.animation = 'slideIn 0.3s ease reverse';
             setTimeout(() => toast.remove(), 300);
-        }, duration);
+        };
+
+        dismissBtn.addEventListener('click', removeToast);
+
+        // Auto-dismiss after duration
+        const autoRemoveTimeout = setTimeout(removeToast, duration);
+
+        // Clear timeout if manually dismissed
+        dismissBtn.addEventListener('click', () => clearTimeout(autoRemoveTimeout), { once: true });
     },
 
-    success: (msg) => Toast.show(msg, 'success'),
-    error: (msg) => Toast.show(msg, 'error'),
-    warning: (msg) => Toast.show(msg, 'warning'),
-    info: (msg) => Toast.show(msg, 'info')
+    success: (msg, duration) => Toast.show(msg, 'success', duration),
+    error: (msg, duration) => Toast.show(msg, 'error', duration),
+    warning: (msg, duration) => Toast.show(msg, 'warning', duration),
+    info: (msg, duration) => Toast.show(msg, 'info', duration)
 };
 
 // ============================================================================
