@@ -12,86 +12,6 @@ const SUPPORTED_FORMATS = {
 };
 
 // ============================================================================
-// MATERIAL PRESETS FOR 3D PRINTING VISUALIZATION
-// ============================================================================
-const MATERIAL_PRESETS = {
-    'default': {
-        name: 'Default',
-        color: 0x00f0ff,
-        metalness: 0.1,
-        roughness: 0.5,
-        clearcoat: 0,
-        envMapIntensity: 0.5
-    },
-    'pla': {
-        name: 'PLA',
-        color: 0x00f0ff,
-        metalness: 0.0,
-        roughness: 0.6,
-        clearcoat: 0.1,
-        envMapIntensity: 0.3
-    },
-    'abs': {
-        name: 'ABS',
-        color: 0x00f0ff,
-        metalness: 0.0,
-        roughness: 0.5,
-        clearcoat: 0.2,
-        envMapIntensity: 0.4
-    },
-    'petg': {
-        name: 'PETG',
-        color: 0x00f0ff,
-        metalness: 0.05,
-        roughness: 0.3,
-        clearcoat: 0.4,
-        envMapIntensity: 0.6
-    },
-    'resin': {
-        name: 'Resin',
-        color: 0x00f0ff,
-        metalness: 0.1,
-        roughness: 0.15,
-        clearcoat: 0.8,
-        envMapIntensity: 0.8
-    },
-    'metal': {
-        name: 'Metal',
-        color: 0xc0c0c0,
-        metalness: 0.9,
-        roughness: 0.2,
-        clearcoat: 0.0,
-        envMapIntensity: 1.0
-    },
-    'silk': {
-        name: 'Silk PLA',
-        color: 0x00f0ff,
-        metalness: 0.6,
-        roughness: 0.3,
-        clearcoat: 0.3,
-        envMapIntensity: 0.7
-    },
-    'matte': {
-        name: 'Matte',
-        color: 0x00f0ff,
-        metalness: 0.0,
-        roughness: 0.9,
-        clearcoat: 0.0,
-        envMapIntensity: 0.2
-    },
-    'glow': {
-        name: 'Glow Effect',
-        color: 0x00ff88,
-        metalness: 0.0,
-        roughness: 0.4,
-        clearcoat: 0.5,
-        envMapIntensity: 0.5,
-        emissive: 0x00ff88,
-        emissiveIntensity: 0.3
-    }
-};
-
-// ============================================================================
 // COLOR PALETTE - EXPANDED WITH GRADIENT PRESETS
 // ============================================================================
 const COLOR_PALETTE = [
@@ -133,7 +53,6 @@ class ModelViewer {
             modelColor: 0x00f0ff,
             wireframe: false,
             autoRotate: true,
-            materialPreset: 'default',
             showGrid: false,
             enableEnvironment: true,
             ...options
@@ -488,29 +407,15 @@ class ModelViewer {
         }
     }
 
-    // Create material based on preset
-    createMaterial(color, presetName = null) {
-        const preset = MATERIAL_PRESETS[presetName || this.options.materialPreset] || MATERIAL_PRESETS.default;
-
+    // Create material for the model
+    createMaterial(color) {
         const materialOptions = {
             color: color,
-            metalness: preset.metalness,
-            roughness: preset.roughness,
+            metalness: 0.1,
+            roughness: 0.5,
             envMap: this.envMap,
-            envMapIntensity: preset.envMapIntensity
+            envMapIntensity: 0.5
         };
-
-        // Add clearcoat if supported
-        if (preset.clearcoat > 0) {
-            materialOptions.clearcoat = preset.clearcoat;
-            materialOptions.clearcoatRoughness = 0.1;
-        }
-
-        // Add emissive for glow effect
-        if (preset.emissive) {
-            materialOptions.emissive = preset.emissive;
-            materialOptions.emissiveIntensity = preset.emissiveIntensity || 0.2;
-        }
 
         return new THREE.MeshPhysicalMaterial(materialOptions);
     }
@@ -581,43 +486,6 @@ class ModelViewer {
         });
 
         this.options.modelColor = color;
-    }
-
-    // Set material preset
-    setMaterialPreset(presetName) {
-        if (!MATERIAL_PRESETS[presetName] || !this.model) return;
-
-        const preset = MATERIAL_PRESETS[presetName];
-        this.options.materialPreset = presetName;
-
-        this.model.traverse((child) => {
-            if (child.isMesh && child.material) {
-                const materials = Array.isArray(child.material) ? child.material : [child.material];
-
-                materials.forEach(mat => {
-                    // Keep current color unless preset has specific color
-                    const color = presetName === 'metal' ? preset.color : (mat.color ? mat.color.getHex() : this.options.modelColor);
-
-                    mat.metalness = preset.metalness;
-                    mat.roughness = preset.roughness;
-                    mat.envMapIntensity = preset.envMapIntensity;
-
-                    if (mat.clearcoat !== undefined) {
-                        mat.clearcoat = preset.clearcoat || 0;
-                    }
-
-                    if (preset.emissive) {
-                        mat.emissive = new THREE.Color(preset.emissive);
-                        mat.emissiveIntensity = preset.emissiveIntensity || 0.2;
-                    } else {
-                        mat.emissive = new THREE.Color(0x000000);
-                        mat.emissiveIntensity = 0;
-                    }
-
-                    mat.needsUpdate = true;
-                });
-            }
-        });
     }
 
     setWireframe(enabled) {
@@ -1331,7 +1199,6 @@ window.Toast = Toast;
 window.Modal = Modal;
 window.TagsInput = TagsInput;
 window.FileUploader = FileUploader;
-window.MATERIAL_PRESETS = MATERIAL_PRESETS;
 window.COLOR_PALETTE = COLOR_PALETTE;
 window.SUPPORTED_FORMATS = SUPPORTED_FORMATS;
 window.ALLOWED_EXTENSIONS = ALLOWED_EXTENSIONS;

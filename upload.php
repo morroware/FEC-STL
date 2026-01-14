@@ -32,7 +32,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_POST['layer_height'])) $printSettings['layer_height'] = $_POST['layer_height'];
     if (!empty($_POST['infill'])) $printSettings['infill'] = $_POST['infill'];
     if (!empty($_POST['supports'])) $printSettings['supports'] = $_POST['supports'];
-    if (!empty($_POST['material'])) $printSettings['material'] = $_POST['material'];
 
     // Validation
     if (!$title) {
@@ -458,17 +457,6 @@ $user = getCurrentUser();
                                     <option value="None">None needed</option>
                                     <option value="Touching buildplate">Touching buildplate</option>
                                     <option value="Everywhere">Everywhere</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label" style="font-size: 0.85rem;">Material</label>
-                                <select name="material" class="form-select">
-                                    <option value="">Not specified</option>
-                                    <option value="PLA">PLA</option>
-                                    <option value="PETG">PETG</option>
-                                    <option value="ABS">ABS</option>
-                                    <option value="TPU">TPU (Flexible)</option>
-                                    <option value="Resin">Resin</option>
                                 </select>
                             </div>
                         </div>
