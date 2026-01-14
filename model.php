@@ -108,9 +108,27 @@ foreach ($relatedModels as $index => $rm) {
                     $fileCount = count($files);
                     ?>
 
+                    <?php
+                    // Check if model has a photo
+                    $hasPhoto = !empty($model['photo']);
+                    $photoUrl = $hasPhoto ? 'uploads/' . $model['photo'] : null;
+                    ?>
+
+                    <?php if ($hasPhoto): ?>
+                    <!-- View Mode Toggle -->
+                    <div class="view-mode-toggle">
+                        <button type="button" class="view-mode-btn active" data-mode="3d">
+                            <i class="fas fa-cube"></i> 3D View
+                        </button>
+                        <button type="button" class="view-mode-btn photo-mode" data-mode="photo">
+                            <i class="fas fa-camera"></i> Photo
+                        </button>
+                    </div>
+                    <?php endif; ?>
+
                     <?php if ($fileCount > 1): ?>
                     <!-- File Selector Tabs -->
-                    <div class="file-selector" style="margin-bottom: 16px;">
+                    <div class="file-selector" id="file-selector" style="margin-bottom: 16px;">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                             <span class="file-count-badge"><?= $fileCount ?> files</span>
                             <span style="color: var(--text-secondary); font-size: 0.9rem;">Click to switch between files</span>
@@ -124,6 +142,16 @@ foreach ($relatedModels as $index => $rm) {
                                 <?= sanitize($file['original_name'] ?? pathinfo($file['filename'], PATHINFO_FILENAME)) ?>
                             </button>
                             <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($hasPhoto): ?>
+                    <!-- Photo Gallery View -->
+                    <div class="model-photo-gallery" id="photo-gallery">
+                        <img src="<?= sanitize($photoUrl) ?>" alt="<?= sanitize($model['title']) ?> - Printed Model">
+                        <div class="photo-badge" style="position: absolute; top: 16px; right: 16px;">
+                            <i class="fas fa-camera"></i> Printed Model
                         </div>
                     </div>
                     <?php endif; ?>
@@ -516,6 +544,9 @@ foreach ($relatedModels as $index => $rm) {
             'original_name' => $f['original_name'] ?? pathinfo($f['filename'], PATHINFO_FILENAME)
         ], $files)) ?>;
 
+        // Model photo URL (if available)
+        const modelPhotoUrl = <?= json_encode($photoUrl) ?>;
+
         // Initialize after DOM ready
         document.addEventListener('DOMContentLoaded', () => {
             const viewerContainer = document.getElementById('main-viewer');
@@ -523,6 +554,34 @@ foreach ($relatedModels as $index => $rm) {
                 currentStlUrl = viewerContainer.dataset.stlUrl;
                 mainViewer = viewerContainer._viewer;
             }
+
+            // View mode toggle (3D vs Photo)
+            const viewModeBtns = document.querySelectorAll('.view-mode-btn');
+            const photoGallery = document.getElementById('photo-gallery');
+            const viewerWrapper = document.querySelector('.viewer-container');
+            const fileSelector = document.getElementById('file-selector');
+
+            viewModeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+
+                    // Update active states
+                    viewModeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    if (mode === 'photo' && photoGallery) {
+                        // Show photo, hide 3D viewer
+                        photoGallery.classList.add('active');
+                        if (viewerWrapper) viewerWrapper.style.display = 'none';
+                        if (fileSelector) fileSelector.style.display = 'none';
+                    } else {
+                        // Show 3D viewer, hide photo
+                        if (photoGallery) photoGallery.classList.remove('active');
+                        if (viewerWrapper) viewerWrapper.style.display = 'block';
+                        if (fileSelector) fileSelector.style.display = 'block';
+                    }
+                });
+            });
 
             // File tab switching (for multi-file models)
             const fileTabs = document.getElementById('model-file-tabs');

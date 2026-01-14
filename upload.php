@@ -94,6 +94,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!$hasError && !empty($uploadedFiles)) {
+            // Handle optional photo upload
+            $photoFilename = null;
+            if (isset($_FILES['model_photo']) && $_FILES['model_photo']['error'] === UPLOAD_ERR_OK) {
+                $photoExt = strtolower(pathinfo($_FILES['model_photo']['name'], PATHINFO_EXTENSION));
+                $allowedPhotoExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+                if (in_array($photoExt, $allowedPhotoExt) && $_FILES['model_photo']['size'] <= 10 * 1024 * 1024) {
+                    $photoFilename = 'photo_' . generateId() . '.' . $photoExt;
+                    $photoPath = UPLOADS_DIR . $photoFilename;
+                    move_uploaded_file($_FILES['model_photo']['tmp_name'], $photoPath);
+                }
+            }
+
             $modelId = createModel([
                 'user_id' => $_SESSION['user_id'],
                 'title' => $title,
@@ -102,7 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'tags' => $tags,
                 'files' => $uploadedFiles,
                 'license' => $license,
-                'print_settings' => $printSettings
+                'print_settings' => $printSettings,
+                'photo' => $photoFilename
             ]);
 
             if ($modelId) {
@@ -225,6 +239,31 @@ $user = getCurrentUser();
                     <div id="file-tabs" class="file-tabs"></div>
                     <div class="viewer-container" style="height: 300px;">
                         <div class="viewer-canvas" id="upload-preview"></div>
+                    </div>
+                </div>
+
+                <!-- Optional Photo Upload -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-camera" style="color: var(--neon-magenta);"></i>
+                        Photo of Printed Model (Optional)
+                    </label>
+                    <div class="photo-upload-section" id="photo-dropzone">
+                        <label for="model-photo">
+                            <div class="upload-icon"><i class="fas fa-camera"></i></div>
+                            <div class="upload-title">Add a photo of your printed model</div>
+                            <div class="upload-hint">
+                                Show off your actual print! JPG, PNG, GIF, WebP (max 10MB)<br>
+                                <small style="color: var(--neon-magenta);">This photo will be shown as a preview thumbnail</small>
+                            </div>
+                            <input type="file" name="model_photo" id="model-photo" accept=".jpg,.jpeg,.png,.gif,.webp">
+                        </label>
+                        <div id="photo-preview" class="photo-preview" style="display: none;">
+                            <img id="photo-preview-img" src="" alt="Photo preview">
+                            <button type="button" class="remove-photo" id="remove-photo">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -509,6 +548,78 @@ $user = getCurrentUser();
             }).catch(err => {
                 Toast.error('Failed to preview model');
                 console.error(err);
+            });
+        }
+
+        // Photo upload preview handling
+        const photoInput = document.getElementById('model-photo');
+        const photoPreview = document.getElementById('photo-preview');
+        const photoPreviewImg = document.getElementById('photo-preview-img');
+        const removePhotoBtn = document.getElementById('remove-photo');
+        const photoDropzone = document.getElementById('photo-dropzone');
+
+        if (photoInput) {
+            photoInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handlePhotoFile(file);
+                }
+            });
+        }
+
+        // Photo drag and drop
+        if (photoDropzone) {
+            photoDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                photoDropzone.style.borderColor = 'var(--neon-magenta)';
+            });
+
+            photoDropzone.addEventListener('dragleave', () => {
+                photoDropzone.style.borderColor = '';
+            });
+
+            photoDropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                photoDropzone.style.borderColor = '';
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    handlePhotoFile(file);
+                    // Update the file input
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    photoInput.files = dt.files;
+                }
+            });
+        }
+
+        function handlePhotoFile(file) {
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                Toast.error('Please upload a JPG, PNG, GIF, or WebP image');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                Toast.error('Photo must be under 10MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                photoPreviewImg.src = e.target.result;
+                photoPreview.style.display = 'block';
+                photoDropzone.querySelector('label').style.display = 'none';
+                Toast.success('Photo added!');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        if (removePhotoBtn) {
+            removePhotoBtn.addEventListener('click', () => {
+                photoInput.value = '';
+                photoPreviewImg.src = '';
+                photoPreview.style.display = 'none';
+                photoDropzone.querySelector('label').style.display = 'block';
+                Toast.info('Photo removed');
             });
         }
     </script>
