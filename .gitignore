@@ -1,0 +1,38 @@
+# Database Configuration (contains sensitive credentials)
+includes/db_config.php
+
+# Data directories
+data/
+data_backup/
+archive/
+
+# Uploaded files
+uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+error_log
+
+# Temporary files
+*.tmp
+*.temp
+
+# PHP
+vendor/
+composer.lock
+
+# Backups
+*.sql
+*.sql.gz
+*.bak
