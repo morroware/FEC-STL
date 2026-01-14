@@ -299,8 +299,8 @@ foreach ($relatedModels as $index => $rm) {
                         </div>
 
                         <div class="viewer-canvas" id="main-viewer"
-                             data-stl-viewer
-                             data-stl-url="uploads/<?= sanitize($files[$initialFileIndex]['filename']) ?>"
+                             data-model-viewer
+                             data-model-url="uploads/<?= sanitize($files[$initialFileIndex]['filename']) ?>"
                              data-default-view="<?= $defaultViewMode ?>"></div>
 
                         <!-- Controls (bottom-right) -->
@@ -434,7 +434,7 @@ foreach ($relatedModels as $index => $rm) {
                         </div>
                         <?php else: ?>
                         <button class="btn btn-primary btn-lg" onclick="downloadModel('<?= $modelId ?>')" style="width: 100%;">
-                            <i class="fas fa-download"></i> Download STL
+                            <i class="fas fa-download"></i> Download Model
                         </button>
                         <?php endif; ?>
                         <div style="display: flex; gap: 12px; margin-top: 12px;">
@@ -567,7 +567,7 @@ foreach ($relatedModels as $index => $rm) {
         let mainViewer = null;
         let fullscreenViewer = null;
         let currentModelColor = 0x00f0ff;
-        let currentStlUrl = '';
+        let currentModelUrl = '';
 
         // Files data for multi-file downloads
         const modelFiles = <?= json_encode(array_map(fn($f) => [
@@ -584,7 +584,7 @@ foreach ($relatedModels as $index => $rm) {
         document.addEventListener('DOMContentLoaded', () => {
             const viewerContainer = document.getElementById('main-viewer');
             if (viewerContainer) {
-                currentStlUrl = viewerContainer.dataset.stlUrl;
+                currentModelUrl = viewerContainer.dataset.modelUrl || viewerContainer.dataset.stlUrl;
                 mainViewer = viewerContainer._viewer;
             }
 
@@ -693,7 +693,7 @@ foreach ($relatedModels as $index => $rm) {
 
                     // Load new file
                     const url = tab.dataset.fileUrl;
-                    currentStlUrl = url;
+                    currentModelUrl = url;
                     loadNewFile(url);
                 });
             }
@@ -927,8 +927,8 @@ foreach ($relatedModels as $index => $rm) {
             }
 
             fullscreenViewer = new ModelViewer(fsCanvas, { modelColor: currentModelColor, autoRotate: true });
-            fullscreenViewer.loadModel(currentStlUrl).then(() => {
-                const ext = currentStlUrl.split('.').pop().toLowerCase();
+            fullscreenViewer.loadModel(currentModelUrl).then(() => {
+                const ext = currentModelUrl.split('.').pop().toLowerCase();
                 if (!['gltf', 'glb', 'ply', 'obj', '3mf'].includes(ext) || !fullscreenViewer.hasVertexColors) {
                     fullscreenViewer.setColor(currentModelColor);
                 }
