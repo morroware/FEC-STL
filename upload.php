@@ -94,18 +94,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!$hasError && !empty($uploadedFiles)) {
-            // Handle optional photo upload
-            $photoFilename = null;
-            if (isset($_FILES['model_photo']) && $_FILES['model_photo']['error'] === UPLOAD_ERR_OK) {
+            // Handle multiple photo uploads
+            $uploadedPhotos = [];
+            if (isset($_FILES['model_photos']) && is_array($_FILES['model_photos']['name'])) {
+                $allowedPhotoExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                $photoCount = count($_FILES['model_photos']['name']);
+
+                for ($p = 0; $p < $photoCount && $p < 5; $p++) { // Max 5 photos
+                    if ($_FILES['model_photos']['error'][$p] !== UPLOAD_ERR_OK) continue;
+
+                    $photoExt = strtolower(pathinfo($_FILES['model_photos']['name'][$p], PATHINFO_EXTENSION));
+                    if (!in_array($photoExt, $allowedPhotoExt)) continue;
+                    if ($_FILES['model_photos']['size'][$p] > 10 * 1024 * 1024) continue;
+
+                    $photoFilename = 'photo_' . generateId() . '.' . $photoExt;
+                    $photoPath = UPLOADS_DIR . $photoFilename;
+                    if (move_uploaded_file($_FILES['model_photos']['tmp_name'][$p], $photoPath)) {
+                        $uploadedPhotos[] = $photoFilename;
+                    }
+                }
+            }
+
+            // Fallback: check single photo upload (backwards compat)
+            if (empty($uploadedPhotos) && isset($_FILES['model_photo']) && $_FILES['model_photo']['error'] === UPLOAD_ERR_OK) {
                 $photoExt = strtolower(pathinfo($_FILES['model_photo']['name'], PATHINFO_EXTENSION));
                 $allowedPhotoExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
                 if (in_array($photoExt, $allowedPhotoExt) && $_FILES['model_photo']['size'] <= 10 * 1024 * 1024) {
                     $photoFilename = 'photo_' . generateId() . '.' . $photoExt;
                     $photoPath = UPLOADS_DIR . $photoFilename;
-                    move_uploaded_file($_FILES['model_photo']['tmp_name'], $photoPath);
+                    if (move_uploaded_file($_FILES['model_photo']['tmp_name'], $photoPath)) {
+                        $uploadedPhotos[] = $photoFilename;
+                    }
                 }
             }
+
+            // Get primary display preference
+            $primaryDisplay = $_POST['primary_display'] ?? 'auto';
 
             $modelId = createModel([
                 'user_id' => $_SESSION['user_id'],
@@ -116,7 +141,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'files' => $uploadedFiles,
                 'license' => $license,
                 'print_settings' => $printSettings,
-                'photo' => $photoFilename
+                'photos' => $uploadedPhotos,
+                'primary_display' => $primaryDisplay
             ]);
 
             if ($modelId) {
@@ -360,24 +386,35 @@ $user = getCurrentUser();
                         </div>
                     </div>
 
-                    <!-- Optional Photo Upload -->
+                    <!-- Optional Photo Upload (Multiple) -->
                     <div class="form-group">
-                        <label class="form-label">Photo of the printed model (optional)</label>
+                        <label class="form-label">Photos of the printed model (optional)</label>
                         <div class="photo-upload-section" id="photo-dropzone">
-                            <label for="model-photo">
+                            <label for="model-photos" id="photo-upload-label">
                                 <div class="upload-icon"><i class="fas fa-camera"></i></div>
-                                <div class="upload-title">Add a photo of your print</div>
+                                <div class="upload-title">Add photos of your print</div>
                                 <div class="upload-hint">
-                                    JPG, PNG, GIF, or WebP (max 10MB). This will be used as the preview thumbnail.
+                                    JPG, PNG, GIF, or WebP (max 10MB each, up to 5 photos)
                                 </div>
-                                <input type="file" name="model_photo" id="model-photo" accept=".jpg,.jpeg,.png,.gif,.webp">
+                                <input type="file" name="model_photos[]" id="model-photos" accept=".jpg,.jpeg,.png,.gif,.webp" multiple>
                             </label>
-                            <div id="photo-preview" class="photo-preview" style="display: none;">
-                                <img id="photo-preview-img" src="" alt="Photo preview">
-                                <button type="button" class="remove-photo" id="remove-photo">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
+                            <div id="photo-gallery-preview" class="photo-gallery-preview"></div>
+                        </div>
+                    </div>
+
+                    <!-- Primary Display Selector -->
+                    <div class="form-group" id="primary-display-group" style="display: none;">
+                        <label class="form-label">Cover Image</label>
+                        <p class="form-hint" style="margin-bottom: 12px;">Choose what to display as the main preview in listings.</p>
+                        <div class="primary-display-options" id="primary-display-options">
+                            <label class="display-option active" data-value="auto">
+                                <input type="radio" name="primary_display" value="auto" checked>
+                                <div class="display-option-content">
+                                    <i class="fas fa-magic"></i>
+                                    <span>Auto</span>
+                                    <small>Photo if available, else 3D</small>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
@@ -822,18 +859,20 @@ $user = getCurrentUser();
             }
         });
 
-        // Photo upload preview handling
-        const photoInput = document.getElementById('model-photo');
-        const photoPreview = document.getElementById('photo-preview');
-        const photoPreviewImg = document.getElementById('photo-preview-img');
-        const removePhotoBtn = document.getElementById('remove-photo');
+        // Multi-photo upload handling
+        const photoInput = document.getElementById('model-photos');
+        const photoGalleryPreview = document.getElementById('photo-gallery-preview');
         const photoDropzone = document.getElementById('photo-dropzone');
+        const photoUploadLabel = document.getElementById('photo-upload-label');
+        const primaryDisplayGroup = document.getElementById('primary-display-group');
+        const primaryDisplayOptions = document.getElementById('primary-display-options');
+
+        let uploadedPhotos = [];
 
         if (photoInput) {
             photoInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    handlePhotoFile(file);
+                if (e.target.files.length) {
+                    handlePhotoFiles(Array.from(e.target.files));
                 }
             });
         }
@@ -852,63 +891,162 @@ $user = getCurrentUser();
             photoDropzone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 photoDropzone.style.borderColor = '';
-                const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    handlePhotoFile(file);
-                    // Update the file input
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    photoInput.files = dt.files;
+                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                if (files.length) {
+                    handlePhotoFiles(files);
+                    syncPhotoInput();
                 }
             });
         }
 
-        function handlePhotoFile(file) {
+        function handlePhotoFiles(files) {
             const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            if (!allowedTypes.includes(file.type)) {
-                Toast.error('Please upload a JPG, PNG, GIF, or WebP image');
-                return;
-            }
-            if (file.size > 10 * 1024 * 1024) {
-                Toast.error('Photo must be under 10MB');
-                return;
-            }
+            let added = 0;
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                photoPreviewImg.src = e.target.result;
-                photoPreview.style.display = 'block';
-                photoDropzone.classList.add('has-photo');
-                photoDropzone.querySelector('label').style.display = 'none';
-
-                // Add success indicator if not exists
-                if (!photoDropzone.querySelector('.photo-success-indicator')) {
-                    const indicator = document.createElement('div');
-                    indicator.className = 'photo-success-indicator';
-                    indicator.innerHTML = '<i class="fas fa-check-circle"></i> Photo added successfully';
-                    photoDropzone.insertBefore(indicator, photoPreview);
+            files.forEach(file => {
+                if (uploadedPhotos.length >= 5) return;
+                if (!allowedTypes.includes(file.type)) {
+                    Toast.error(`Invalid format: ${file.name}`);
+                    return;
+                }
+                if (file.size > 10 * 1024 * 1024) {
+                    Toast.error(`Photo too large: ${file.name}`);
+                    return;
                 }
 
-                Toast.success('Photo added! It will appear as a preview thumbnail.');
-            };
-            reader.readAsDataURL(file);
+                uploadedPhotos.push(file);
+                added++;
+            });
+
+            if (added > 0) {
+                renderPhotoGallery();
+                updatePrimaryDisplayOptions();
+                syncPhotoInput();
+                Toast.success(`${added} photo${added > 1 ? 's' : ''} added`);
+            }
         }
 
-        if (removePhotoBtn) {
-            removePhotoBtn.addEventListener('click', () => {
-                photoInput.value = '';
-                photoPreviewImg.src = '';
-                photoPreview.style.display = 'none';
+        function renderPhotoGallery() {
+            if (uploadedPhotos.length === 0) {
+                photoGalleryPreview.innerHTML = '';
+                photoGalleryPreview.style.display = 'none';
+                photoUploadLabel.style.display = 'block';
                 photoDropzone.classList.remove('has-photo');
-                photoDropzone.querySelector('label').style.display = 'block';
+                return;
+            }
 
-                // Remove success indicator
-                const indicator = photoDropzone.querySelector('.photo-success-indicator');
-                if (indicator) indicator.remove();
+            photoUploadLabel.style.display = 'none';
+            photoDropzone.classList.add('has-photo');
+            photoGalleryPreview.style.display = 'grid';
 
-                Toast.info('Photo removed');
+            photoGalleryPreview.innerHTML = uploadedPhotos.map((file, i) => {
+                const url = URL.createObjectURL(file);
+                return `
+                    <div class="photo-thumb" data-index="${i}">
+                        <img src="${url}" alt="Photo ${i + 1}">
+                        <button type="button" class="remove-photo-btn" data-index="${i}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        ${i === 0 ? '<span class="photo-primary-badge"><i class="fas fa-star"></i></span>' : ''}
+                    </div>
+                `;
+            }).join('') + `
+                ${uploadedPhotos.length < 5 ? `
+                    <label class="photo-add-more" for="model-photos">
+                        <i class="fas fa-plus"></i>
+                        <span>Add more</span>
+                    </label>
+                ` : ''}
+            `;
+
+            // Add remove listeners
+            photoGalleryPreview.querySelectorAll('.remove-photo-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const index = parseInt(btn.dataset.index);
+                    uploadedPhotos.splice(index, 1);
+                    renderPhotoGallery();
+                    updatePrimaryDisplayOptions();
+                    syncPhotoInput();
+                    Toast.info('Photo removed');
+                });
             });
         }
+
+        function syncPhotoInput() {
+            const dt = new DataTransfer();
+            uploadedPhotos.forEach(file => dt.items.add(file));
+            photoInput.files = dt.files;
+        }
+
+        function updatePrimaryDisplayOptions() {
+            const hasPhotos = uploadedPhotos.length > 0;
+            const hasFiles = uploadedFiles.length > 0;
+
+            if (!hasPhotos && !hasFiles) {
+                primaryDisplayGroup.style.display = 'none';
+                return;
+            }
+
+            primaryDisplayGroup.style.display = 'block';
+
+            // Build options HTML
+            let optionsHtml = `
+                <label class="display-option active" data-value="auto">
+                    <input type="radio" name="primary_display" value="auto" checked>
+                    <div class="display-option-content">
+                        <i class="fas fa-magic"></i>
+                        <span>Auto</span>
+                        <small>${hasPhotos ? 'Uses photo' : 'Uses 3D preview'}</small>
+                    </div>
+                </label>
+            `;
+
+            if (hasPhotos) {
+                optionsHtml += `
+                    <label class="display-option" data-value="photo">
+                        <input type="radio" name="primary_display" value="photo">
+                        <div class="display-option-content">
+                            <i class="fas fa-camera"></i>
+                            <span>Photo</span>
+                            <small>Show photo in listings</small>
+                        </div>
+                    </label>
+                `;
+            }
+
+            if (hasFiles) {
+                optionsHtml += `
+                    <label class="display-option" data-value="3d">
+                        <input type="radio" name="primary_display" value="0">
+                        <div class="display-option-content">
+                            <i class="fas fa-cube"></i>
+                            <span>3D Model</span>
+                            <small>Show 3D preview in listings</small>
+                        </div>
+                    </label>
+                `;
+            }
+
+            primaryDisplayOptions.innerHTML = optionsHtml;
+
+            // Add click handlers
+            primaryDisplayOptions.querySelectorAll('.display-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    primaryDisplayOptions.querySelectorAll('.display-option').forEach(o => o.classList.remove('active'));
+                    opt.classList.add('active');
+                    opt.querySelector('input').checked = true;
+                });
+            });
+        }
+
+        // Update primary display when files change
+        const originalHandleFiles = handleFiles;
+        handleFiles = function(files) {
+            originalHandleFiles(files);
+            updatePrimaryDisplayOptions();
+        };
     </script>
 </body>
 </html>

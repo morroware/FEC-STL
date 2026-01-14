@@ -163,14 +163,27 @@ if ($query) {
                         <?php
                         $category = getCategory($model['category']);
                         $fileCount = $model['file_count'] ?? 1;
-                        $hasPhoto = !empty($model['photo']);
+
+                        // Get photos array (support both formats)
+                        $photos = $model['photos'] ?? ($model['photo'] ? [$model['photo']] : []);
+                        $hasPhotos = !empty($photos);
+                        $primaryDisplay = $model['primary_display'] ?? 'auto';
+
+                        // Determine what to show as preview
+                        $showPhoto = false;
+                        if ($primaryDisplay === 'photo' && $hasPhotos) {
+                            $showPhoto = true;
+                        } elseif ($primaryDisplay === 'auto' && $hasPhotos) {
+                            $showPhoto = true;
+                        }
+                        // If primary_display is a number (file index), show 3D
                         ?>
                         <div class="card model-card">
-                            <div class="model-card-preview <?= $hasPhoto ? 'has-photo' : '' ?>">
-                                <?php if ($hasPhoto): ?>
+                            <div class="model-card-preview <?= $showPhoto ? 'has-photo' : '' ?>">
+                                <?php if ($showPhoto): ?>
                                 <!-- Show uploaded photo as thumbnail -->
                                 <div class="preview-photo">
-                                    <img src="uploads/<?= sanitize($model['photo']) ?>" alt="<?= sanitize($model['title']) ?>">
+                                    <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($model['title']) ?>">
                                 </div>
                                 <div class="photo-indicator">
                                     <i class="fas fa-camera"></i> Photo

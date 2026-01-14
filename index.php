@@ -127,18 +127,33 @@ foreach ($trendingModels as $index => $model) {
 
                 <div class="model-grid">
                     <?php foreach ($trendingModels as $tm): ?>
-                        <?php $category = getCategory($tm['category']); ?>
+                        <?php
+                        $category = getCategory($tm['category']);
+                        $photos = $tm['photos'] ?? ($tm['photo'] ? [$tm['photo']] : []);
+                        $hasPhotos = !empty($photos);
+                        $primaryDisplay = $tm['primary_display'] ?? 'auto';
+                        $showPhoto = ($primaryDisplay === 'photo' || $primaryDisplay === 'auto') && $hasPhotos;
+                        ?>
                         <div class="card model-card">
-                            <div class="model-card-preview">
+                            <div class="model-card-preview <?= $showPhoto ? 'has-photo' : '' ?>">
+                                <?php if ($showPhoto): ?>
+                                <div class="preview-photo">
+                                    <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($tm['title']) ?>">
+                                </div>
+                                <div class="photo-indicator">
+                                    <i class="fas fa-camera"></i> Photo
+                                </div>
+                                <?php else: ?>
                                 <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($tm['filename']) ?>">
                                     <i class="fas fa-cube"></i>
                                 </div>
+                                <?php endif; ?>
                                 <?php if (($tm['file_count'] ?? 1) > 1): ?>
                                 <div style="position: absolute; top: 12px; right: 12px;">
                                     <span class="file-count-badge"><?= $tm['file_count'] ?> files</span>
                                 </div>
                                 <?php endif; ?>
-                                <?php if (($tm['downloads'] ?? 0) > 0): ?>
+                                <?php if (($tm['downloads'] ?? 0) > 0 && !$showPhoto): ?>
                                 <div style="position: absolute; top: 12px; left: 12px;">
                                     <span class="trending-indicator">
                                         <i class="fas fa-arrow-up"></i> <?= $tm['downloads'] ?> downloads
@@ -245,12 +260,25 @@ foreach ($trendingModels as $index => $model) {
                         <?php
                         $category = getCategory($model['category']);
                         $fileCount = $model['file_count'] ?? 1;
+                        $photos = $model['photos'] ?? ($model['photo'] ? [$model['photo']] : []);
+                        $hasPhotos = !empty($photos);
+                        $primaryDisplay = $model['primary_display'] ?? 'auto';
+                        $showPhoto = ($primaryDisplay === 'photo' || $primaryDisplay === 'auto') && $hasPhotos;
                         ?>
                         <div class="card model-card">
-                            <div class="model-card-preview">
+                            <div class="model-card-preview <?= $showPhoto ? 'has-photo' : '' ?>">
+                                <?php if ($showPhoto): ?>
+                                <div class="preview-photo">
+                                    <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($model['title']) ?>">
+                                </div>
+                                <div class="photo-indicator">
+                                    <i class="fas fa-camera"></i> Photo
+                                </div>
+                                <?php else: ?>
                                 <div class="preview-placeholder" data-stl-thumb="uploads/<?= sanitize($model['filename']) ?>">
                                     <i class="fas fa-cube"></i>
                                 </div>
+                                <?php endif; ?>
                                 <?php if ($fileCount > 1): ?>
                                 <div style="position: absolute; top: 12px; right: 12px;">
                                     <span class="file-count-badge"><?= $fileCount ?> files</span>
