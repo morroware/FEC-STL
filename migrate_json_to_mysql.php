@@ -412,7 +412,10 @@ if (!empty($models)) {
     if (!$modelStmt || !$fileStmt || !$photoStmt) {
         outputMsg("❌ Failed to prepare model statements: " . $conn->error, 'error');
     } else {
+        outputMsg("✓ Model statements prepared successfully", 'success');
         foreach ($models as $model) {
+            outputMsg("  Processing model: {$model['title']}...", 'info');
+
             // Prepare data with proper null handling
             $tagsJson = json_encode($model['tags'] ?? []);
             $printSettingsJson = json_encode($model['print_settings'] ?? []);
@@ -430,22 +433,24 @@ if (!empty($models)) {
             $modelDesc = $model['description'] ?? '';
             $modelCategory = $model['category'];
             $modelFilename = $model['filename'] ?? '';
-            $modelFilesize = $model['filesize'] ?? 0;
+            $modelFilesize = (int)($model['filesize'] ?? 0);
             $modelThumbnail = $model['thumbnail'] ?? '';  // Handle null thumbnail
             $modelPhoto = $model['photo'] ?? '';  // Handle null/missing photo
             $modelPrimaryDisplay = $model['primary_display'] ?? 'auto';
             $modelLicense = $model['license'] ?? 'CC BY-NC';
-            $modelDownloads = $model['downloads'] ?? 0;
-            $modelLikes = $model['likes'] ?? 0;
-            $modelViews = $model['views'] ?? 0;
-            $modelFeatured = $model['featured'] ?? false;
+            $modelDownloads = (int)($model['downloads'] ?? 0);
+            $modelLikes = (int)($model['likes'] ?? 0);
+            $modelViews = (int)($model['views'] ?? 0);
+            $modelFeatured = (int)($model['featured'] ?? 0);  // Cast bool to int
+
+            outputMsg("    Binding parameters...", 'info');
 
             // Insert model
             // Type string: s=string, i=integer
             // Columns: id(s), user_id(s), title(s), description(s), category(s), tags(s), filename(s),
             //          filesize(i), file_count(i), thumbnail(s), photo(s), primary_display(s), license(s),
             //          print_settings(s), downloads(i), likes(i), views(i), featured(i), created_at(s), updated_at(s)
-            $modelStmt->bind_param(
+            $bindResult = $modelStmt->bind_param(
                 "sssssssiisssssiiiiss",
                 $modelId,
                 $modelUserId,
@@ -469,6 +474,12 @@ if (!empty($models)) {
                 $updatedAt
             );
 
+            if (!$bindResult) {
+                outputMsg("    ❌ Bind failed: " . $modelStmt->error, 'error');
+                continue;
+            }
+            outputMsg("    Executing insert...", 'info');
+
             if ($modelStmt->execute()) {
                 $modelCount++;
                 if ($isCli) {
@@ -478,17 +489,20 @@ if (!empty($models)) {
                 }
 
                 // Migrate files
+                outputMsg("    Migrating files...", 'info');
                 if (!empty($model['files'])) {
                     foreach ($model['files'] as $index => $file) {
-                        $hasColor = $file['has_color'] ?? false;
+                        $hasColor = (int)($file['has_color'] ?? 0);  // Cast bool to int
+                        $fileSize = (int)($file['filesize'] ?? 0);
                         $extension = $file['extension'] ?? pathinfo($file['filename'], PATHINFO_EXTENSION);
+                        $origName = $file['original_name'] ?? $file['filename'];
 
                         $fileStmt->bind_param(
                             "ssissii",
                             $model['id'],
                             $file['filename'],
-                            $file['filesize'],
-                            $file['original_name'] ?? $file['filename'],
+                            $fileSize,
+                            $origName,
                             $extension,
                             $hasColor,
                             $index
@@ -500,25 +514,31 @@ if (!empty($models)) {
                 } elseif (!empty($model['filename'])) {
                     // Legacy single file
                     $extension = pathinfo($model['filename'], PATHINFO_EXTENSION);
+                    $legacyFilesize = (int)($model['filesize'] ?? 0);
+                    $hasColorInt = 0;  // false as int
+                    $fileOrder = 0;
                     $fileStmt->bind_param(
                         "ssissii",
-                        $model['id'],
+                        $modelId,
                         $model['filename'],
-                        $model['filesize'] ?? 0,
+                        $legacyFilesize,
                         $model['filename'],
                         $extension,
-                        false,
-                        0
+                        $hasColorInt,
+                        $fileOrder
                     );
                     if (!$fileStmt->execute()) {
-                        outputMsg("Failed to migrate legacy file for model '{$model['title']}': " . $fileStmt->error, 'error');
+                        outputMsg("    ❌ Failed to migrate legacy file: " . $fileStmt->error, 'error');
+                    } else {
+                        outputMsg("    ✓ File migrated", 'success');
                     }
                 }
 
                 // Migrate photos
+                outputMsg("    Migrating photos...", 'info');
                 if (!empty($model['photos'])) {
                     foreach ($model['photos'] as $index => $photo) {
-                        $isPrimary = ($index === 0);
+                        $isPrimary = (int)($index === 0);  // Cast bool to int
                         $photoStmt->bind_param("ssii", $model['id'], $photo, $isPrimary, $index);
                         if (!$photoStmt->execute()) {
                             outputMsg("Failed to migrate photo '{$photo}' for model '{$model['title']}': " . $photoStmt->error, 'error');
@@ -526,13 +546,19 @@ if (!empty($models)) {
                     }
                 } elseif (!empty($model['photo'])) {
                     // Legacy single photo
-                    $photoStmt->bind_param("ssii", $model['id'], $model['photo'], true, 0);
+                    $isPrimaryInt = 1;  // true as int
+                    $photoOrder = 0;
+                    $photoStmt->bind_param("ssii", $modelId, $model['photo'], $isPrimaryInt, $photoOrder);
                     if (!$photoStmt->execute()) {
-                        outputMsg("Failed to migrate legacy photo for model '{$model['title']}': " . $photoStmt->error, 'error');
+                        outputMsg("    ❌ Failed to migrate legacy photo: " . $photoStmt->error, 'error');
+                    } else {
+                        outputMsg("    ✓ Photo migrated", 'success');
                     }
+                } else {
+                    outputMsg("    No photos to migrate", 'info');
                 }
             } else {
-                outputMsg("Failed to migrate model '{$model['title']}': " . $modelStmt->error, 'error');
+                outputMsg("❌ Failed to migrate model '{$model['title']}': " . $modelStmt->error, 'error');
             }
         }
 
