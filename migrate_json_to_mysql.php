@@ -326,7 +326,7 @@ if (!empty($users)) {
             $createdAt = $user['created_at'] ?? date('Y-m-d H:i:s');
 
             $stmt->bind_param(
-                "ssssisssiii",
+                "ssssissssii",
                 $user['id'],
                 $user['username'],
                 $user['email'],
