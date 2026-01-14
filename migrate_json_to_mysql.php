@@ -322,7 +322,7 @@ if (!empty($users)) {
         outputMsg("❌ Failed to prepare user statement: " . $conn->error, 'error');
     } else {
         foreach ($users as $user) {
-            $isAdmin = $user['is_admin'] ?? false;
+            $isAdmin = (int)($user['is_admin'] ?? false);  // Cast boolean to int for MySQL
             $createdAt = $user['created_at'] ?? date('Y-m-d H:i:s');
 
             // Extract values with proper null handling for bind_param
@@ -333,8 +333,8 @@ if (!empty($users)) {
             $avatar = $user['avatar'] ?? '';  // Handle null avatar
             $bio = $user['bio'] ?? '';
             $location = $user['location'] ?? '';
-            $modelCount = $user['model_count'] ?? 0;
-            $downloadCount = $user['download_count'] ?? 0;
+            $modelCount = (int)($user['model_count'] ?? 0);
+            $downloadCount = (int)($user['download_count'] ?? 0);
 
             $stmt->bind_param(
                 "ssssissssii",

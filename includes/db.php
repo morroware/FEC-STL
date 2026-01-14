@@ -118,12 +118,8 @@ if (USE_MYSQL) {
         foreach ($data as $key => $value) {
             if ($key === 'id') continue; // Don't update ID
             $fields[] = "`$key` = ?";
-            // Cast booleans to integers for MySQL
-            if (is_bool($value)) {
-                $value = (int)$value;
-            }
             $values[] = $value;
-            $types .= is_int($value) ? 'i' : 's';
+            $types .= is_int($value) || is_bool($value) ? 'i' : 's';
         }
 
         if (empty($fields)) return false;
@@ -256,10 +252,6 @@ if (USE_MYSQL) {
         foreach ($data as $key => $value) {
             if ($key === 'id') continue; // Don't update ID
             $fields[] = "`$key` = ?";
-            // Cast booleans to integers for MySQL
-            if (is_bool($value)) {
-                $value = (int)$value;
-            }
             $values[] = $value;
             $types .= is_int($value) ? 'i' : 's';
         }
@@ -545,12 +537,8 @@ if (USE_MYSQL) {
             }
 
             $fields[] = "`$key` = ?";
-            // Cast booleans to integers for MySQL
-            if (is_bool($value)) {
-                $value = (int)$value;
-            }
             $values[] = $value;
-            $types .= is_int($value) ? 'i' : 's';
+            $types .= (is_int($value) || is_bool($value)) ? 'i' : 's';
         }
 
         $fields[] = "updated_at = NOW()";
