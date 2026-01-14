@@ -447,7 +447,7 @@ if (USE_MYSQL) {
         $license = $data['license'] ?? 'CC BY-NC';
 
         $stmt->bind_param(
-            "ssssssssissss",
+            "sssssssiisssss",
             $id,
             $data['user_id'],
             $data['title'],
