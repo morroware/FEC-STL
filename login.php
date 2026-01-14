@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Login/Register
+ * Community 3D Model Vault - Login/Register
  */
 
 require_once __DIR__ . '/includes/config.php';
@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a href="browse.php">Browse</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. Made for the FEC community.
+                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
                 </div>
             </div>
         </div>

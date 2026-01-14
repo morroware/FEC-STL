@@ -1,5 +1,5 @@
 /**
- * FEC STL Vault - Main JavaScript
+ * Community 3D Model Vault - Main JavaScript
  * 3D Viewer with Multi-Format Support & Enhanced Visuals
  */
 

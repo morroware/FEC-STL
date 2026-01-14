@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Database Operations
+ * Community 3D Model Vault - Database Operations
  * Hybrid MySQL/JSON storage with automatic fallback
  * Uses MySQL if configured, falls back to JSON otherwise
  */
@@ -692,10 +692,10 @@ if (USE_MYSQL) {
                 ['id' => 'redemption', 'name' => 'Redemption Games', 'icon' => 'fa-ticket', 'description' => 'Parts for ticket and prize redemption machines', 'count' => 0],
                 ['id' => 'signage', 'name' => 'Signage & Displays', 'icon' => 'fa-sign', 'description' => 'Signs, toppers, marquees, and display pieces', 'count' => 0],
                 ['id' => 'coin-op', 'name' => 'Coin-Op & Tokens', 'icon' => 'fa-coins', 'description' => 'Coin mechanisms, token holders, and cash handling', 'count' => 0],
-                ['id' => 'maintenance', 'name' => 'Maintenance Tools', 'icon' => 'fa-wrench', 'description' => 'Tools and jigs for FEC maintenance', 'count' => 0],
+                ['id' => 'maintenance', 'name' => 'Maintenance Tools', 'icon' => 'fa-wrench', 'description' => 'Tools and jigs for maintenance and repairs', 'count' => 0],
                 ['id' => 'prizes', 'name' => 'Prize Displays', 'icon' => 'fa-gift', 'description' => 'Prize shelving, holders, and display units', 'count' => 0],
                 ['id' => 'accessories', 'name' => 'Accessories', 'icon' => 'fa-puzzle-piece', 'description' => 'Cup holders, phone stands, and misc accessories', 'count' => 0],
-                ['id' => 'other', 'name' => 'Other', 'icon' => 'fa-cube', 'description' => 'Miscellaneous FEC-related prints', 'count' => 0],
+                ['id' => 'other', 'name' => 'Other', 'icon' => 'fa-cube', 'description' => 'Miscellaneous 3D printable models', 'count' => 0],
             ];
             writeJsonFile(CATEGORIES_FILE, $categories);
         }
@@ -706,7 +706,7 @@ if (USE_MYSQL) {
                 [
                     'id' => 'admin',
                     'username' => 'admin',
-                    'email' => 'admin@fecvault.com',
+                    'email' => 'admin@example.com',
                     'password' => password_hash('admin123', PASSWORD_DEFAULT),
                     'is_admin' => true,
                     'avatar' => null,

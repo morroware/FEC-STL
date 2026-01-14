@@ -1,7 +1,7 @@
 <?php
 /**
- * FEC STL Share - Configuration
- * Family Entertainment Center STL Sharing Platform
+ * Community 3D Model Vault - Configuration
+ * Community-driven 3D Model Sharing Platform
  */
 
 // Start session
@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Configuration
-define('SITE_NAME', 'FEC STL Vault');
+define('SITE_NAME', 'Community 3D Model Vault');
 define('SITE_TAGLINE', 'Share. Print. Play.');
 define('DATA_DIR', __DIR__ . '/../data/');
 define('UPLOADS_DIR', __DIR__ . '/../uploads/');

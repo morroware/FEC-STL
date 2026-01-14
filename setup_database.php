@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Database Setup Script
+ * Community 3D Model Vault - Database Setup Script
  * Run this once to create MySQL database schema
  * Compatible with cPanel shared hosting
  */
@@ -32,7 +32,7 @@ function showSetupPage($error) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>FEC STL Vault - Database Setup</title>
+        <title>Community 3D Model Vault - Database Setup</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -193,7 +193,7 @@ if (!$isCli) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>FEC STL Vault - Database Setup</title>
+        <title>Community 3D Model Vault - Database Setup</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -304,7 +304,7 @@ if (!$isCli) {
     </head>
     <body>
         <div class="container">
-            <h1>⚙️ FEC STL Vault Database Setup</h1>
+            <h1>⚙️ Community 3D Model Vault Database Setup</h1>
             <p class="subtitle">MySQL Database Installation</p>
     <?php
 }
@@ -477,10 +477,10 @@ $categories = [
     ['redemption', 'Redemption Games', 'fa-ticket', 'Parts for ticket and prize redemption machines'],
     ['signage', 'Signage & Displays', 'fa-sign', 'Signs, toppers, marquees, and display pieces'],
     ['coin-op', 'Coin-Op & Tokens', 'fa-coins', 'Coin mechanisms, token holders, and cash handling'],
-    ['maintenance', 'Maintenance Tools', 'fa-wrench', 'Tools and jigs for FEC maintenance'],
+    ['maintenance', 'Maintenance Tools', 'fa-wrench', 'Tools and jigs for maintenance and repairs'],
     ['prizes', 'Prize Displays', 'fa-gift', 'Prize shelving, holders, and display units'],
     ['accessories', 'Accessories', 'fa-puzzle-piece', 'Cup holders, phone stands, and misc accessories'],
-    ['other', 'Other', 'fa-cube', 'Miscellaneous FEC-related prints']
+    ['other', 'Other', 'fa-cube', 'Miscellaneous 3D printable models']
 ];
 
 $stmt = $conn->prepare("INSERT IGNORE INTO categories (id, name, icon, description, count) VALUES (?, ?, ?, ?, 0)");

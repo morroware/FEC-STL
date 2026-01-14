@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Admin Dashboard
+ * Community 3D Model Vault - Admin Dashboard
  */
 
 require_once __DIR__ . '/includes/config.php';
@@ -537,7 +537,7 @@ $faIcons = [
                     <a href="browse.php">Browse</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. Made for the FEC community.
+                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
                 </div>
             </div>
         </div>

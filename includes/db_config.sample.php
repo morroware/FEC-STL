@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - Database Configuration SAMPLE
+ * Community 3D Model Vault - Database Configuration SAMPLE
  *
  * INSTRUCTIONS:
  * 1. Copy this file to db_config.php
@@ -18,8 +18,8 @@
 
 // Database credentials - UPDATE THESE FOR YOUR CPANEL ACCOUNT
 define('DB_HOST', 'localhost');           // Usually 'localhost' for cPanel
-define('DB_NAME', 'fecvault_db');         // Your database name (cpaneluser_dbname)
-define('DB_USER', 'fecvault_user');       // Your database user (cpaneluser_dbuser)
+define('DB_NAME', 'vault_db');            // Your database name (cpaneluser_dbname)
+define('DB_USER', 'vault_user');          // Your database user (cpaneluser_dbuser)
 define('DB_PASS', 'your_password_here');  // Your database password
 
 // Database charset

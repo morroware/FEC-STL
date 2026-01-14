@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - API Endpoint
+ * Community 3D Model Vault - API Endpoint
  * Handles all AJAX requests
  */
 

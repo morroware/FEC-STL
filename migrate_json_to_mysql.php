@@ -1,6 +1,6 @@
 <?php
 /**
- * FEC STL Vault - JSON to MySQL Migration Script
+ * Community 3D Model Vault - JSON to MySQL Migration Script
  * Migrates existing JSON data files to MySQL database
  * Run this AFTER setup_database.php
  */
@@ -52,7 +52,7 @@ if (!$isCli) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>FEC STL Vault - Data Migration</title>
+        <title>Community 3D Model Vault - Data Migration</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -181,7 +181,7 @@ define('OLD_MODELS_FILE', DATA_DIR . 'models.json');
 define('OLD_CATEGORIES_FILE', DATA_DIR . 'categories.json');
 
 if ($isCli) {
-    echo "FEC STL Vault - JSON to MySQL Migration\n";
+    echo "Community 3D Model Vault - JSON to MySQL Migration\n";
     echo "========================================\n\n";
 }
 
