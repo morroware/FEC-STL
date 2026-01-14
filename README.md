@@ -1,74 +1,74 @@
 # FEC STL Vault
 
-A community-driven STL file sharing platform for Family Entertainment Center (FEC) owners to share 3D printable parts, repairs, and upgrades.
-
-![FEC STL Vault](https://via.placeholder.com/800x400/0a0a0f/00f0ff?text=FEC+STL+Vault)
+FEC STL Vault is a PHP-based STL file sharing platform for Family Entertainment Center (FEC) operators. It supports browsing, uploading, and managing 3D printable parts with a JSON-backed data store.
 
 ## Features
 
-### For Users
-- 🎮 **Browse & Search** - Find STL files by category, keyword, or popularity
-- 📤 **Upload Models** - Share your 3D designs with the community
-- 👁️ **3D Preview** - Interactive Three.js viewer for STL files
-- ❤️ **Favorites** - Save models for later
-- 👤 **User Profiles** - Track your uploads and downloads
-- 🏷️ **Tags & Categories** - Organized content for easy discovery
+### User Features
+- Browse, search, and filter STL models by category.
+- Upload STL files with metadata and images.
+- View models with a Three.js STL preview.
+- Favorite and like models.
+- Track downloads and views.
+- Manage a user profile.
 
-### For Admins
-- 📊 **Dashboard** - Overview of site statistics
-- 📁 **Category Management** - Create, edit, delete categories
-- 👥 **User Management** - Manage users and admin privileges
-- 🗂️ **Model Management** - Moderate uploaded content
+### Admin Features
+- Review platform statistics.
+- Create, update, and delete categories.
+- Manage users and their roles.
+- Update or remove uploaded models.
 
 ## Tech Stack
 
 - **Backend**: PHP 7.4+
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **3D Rendering**: Three.js (via CDN)
-- **Icons**: Font Awesome 6 (via CDN)
+- **3D Rendering**: Three.js (CDN)
+- **Icons**: Font Awesome 6 (CDN)
 - **Fonts**: Google Fonts (Orbitron, Exo 2)
-- **Storage**: JSON files (for PoC - easily replaceable with MySQL)
+- **Storage**: JSON files in `data/`
+- **Uploads**: Files stored in `uploads/`
 
-## Installation
+## Requirements
 
-### Requirements
 - PHP 7.4 or higher
-- Apache with mod_rewrite enabled (or nginx)
-- Write permissions for `data/` and `uploads/` directories
+- Web server (Apache or nginx) or PHP built-in server
+- Writable `data/` and `uploads/` directories
 
-### Quick Setup
+## Setup
 
-1. **Clone or download** the project files to your web server:
+1. **Clone the repo**:
    ```bash
-   git clone [repository] /var/www/html/stl-vault
-   # or just copy files to your web directory
+   git clone [repository] /var/www/html/fec-stl-vault
    ```
 
 2. **Set permissions**:
    ```bash
-   chmod 755 /var/www/html/stl-vault
-   chmod 777 /var/www/html/stl-vault/data
-   chmod 777 /var/www/html/stl-vault/uploads
+   chmod 755 /var/www/html/fec-stl-vault
+   chmod 775 /var/www/html/fec-stl-vault/data
+   chmod 775 /var/www/html/fec-stl-vault/uploads
    ```
 
-3. **Access the site** in your browser:
-   ```
-   http://localhost/stl-vault/
+3. **Run locally (optional)**:
+   ```bash
+   php -S localhost:8000 -t /var/www/html/fec-stl-vault
    ```
 
-4. **Login as admin**:
+4. **Open the app**:
+   ```
+   http://localhost:8000/
+   ```
+
+5. **Default admin account**:
    - Username: `admin`
    - Password: `admin123`
 
-5. **Change the admin password** (recommended):
-   - Log in as admin
-   - The password can be changed by editing `data/users.json` directly
-   - Use PHP's `password_hash()` function to generate new hashes
+6. **Update the admin password**:
+   - Edit `data/users.json` and replace the password hash with a new value from PHP's `password_hash()`.
 
 ## File Structure
 
 ```
-stl-share/
+FEC-STL/
 ├── index.php           # Homepage
 ├── browse.php          # Browse/search models
 ├── model.php           # Single model view with 3D preview
@@ -78,7 +78,6 @@ stl-share/
 ├── admin.php           # Admin dashboard
 ├── api.php             # AJAX endpoints
 ├── logout.php          # Logout handler
-├── .htaccess           # Apache configuration
 │
 ├── includes/
 │   ├── config.php      # Configuration & helpers
@@ -90,96 +89,55 @@ stl-share/
 ├── js/
 │   └── app.js          # JavaScript (3D viewer, API, UI)
 │
-├── data/               # JSON data storage (auto-created)
+├── data/               # JSON data storage
 │   ├── users.json
 │   ├── models.json
 │   └── categories.json
 │
-└── uploads/            # STL file storage (auto-created)
+└── uploads/            # STL file storage
 ```
-
-## Default Categories
-
-- Arcade Parts
-- Redemption Games
-- Signage & Displays
-- Coin-Op & Tokens
-- Maintenance Tools
-- Prize Displays
-- Accessories
-- Other
 
 ## API Endpoints
 
-All API calls go through `api.php` with POST requests:
+All API calls go through `api.php` and accept POST or GET parameters (POST preferred).
 
 | Action | Description |
 |--------|-------------|
 | `login` | Authenticate user |
 | `register` | Create new account |
 | `logout` | End session |
+| `check_auth` | Return current session user |
 | `get_models` | List/search models |
-| `get_model` | Get single model |
-| `upload_model` | Upload new STL |
+| `get_model` | Get a single model |
+| `upload_model` | Upload a new STL |
+| `update_model` | Update model metadata |
 | `delete_model` | Delete model |
 | `download_model` | Track download |
 | `like_model` | Like a model |
 | `favorite_model` | Toggle favorite |
 | `get_categories` | List categories |
-| `create_category` | Admin: new category |
-| `update_category` | Admin: edit category |
+| `create_category` | Admin: create category |
+| `update_category` | Admin: update category |
 | `delete_category` | Admin: remove category |
 | `get_users` | Admin: list users |
+| `get_user` | Admin: get a single user |
+| `update_user` | Admin: update user |
 | `delete_user` | Admin: remove user |
+| `get_stats` | Admin: site stats |
 
-## Customization
+## Configuration Notes
 
-### Changing Colors
-Edit CSS variables in `css/style.css`:
-```css
-:root {
-    --neon-cyan: #00f0ff;
-    --neon-magenta: #ff00aa;
-    --bg-dark: #0a0a0f;
-    /* ... */
-}
-```
+- File upload limit is set to 50MB in `includes/config.php` (`MAX_FILE_SIZE`).
+- JSON storage can be replaced with a database by rewriting the helpers in `includes/db.php`.
 
-### Adding Categories
-Use the admin panel or edit `data/categories.json`:
-```json
-{
-    "id": "new-category",
-    "name": "New Category",
-    "icon": "fa-star",
-    "description": "Description here",
-    "count": 0
-}
-```
+## Production Checklist
 
-### Switching to MySQL
-Replace the functions in `includes/db.php` with MySQL queries. The data structure remains the same.
-
-## Production Considerations
-
-Before deploying to production:
-
-1. **Change admin credentials**
-2. **Use HTTPS**
-3. **Set up proper file permissions**
-4. **Consider switching to MySQL** for better performance
-5. **Add rate limiting** to prevent abuse
-6. **Set up backups** for data and uploads
-7. **Add CSRF tokens** to all forms (basic implementation included)
+1. Change admin credentials.
+2. Use HTTPS.
+3. Set least-privilege permissions for `data/` and `uploads/`.
+4. Consider moving JSON storage to a database for concurrency.
+5. Add rate limiting and backups.
 
 ## License
 
-MIT License - Feel free to use, modify, and distribute.
-
-## Credits
-
-Built with ❤️ for the FEC community.
-
-- 3D Rendering: [Three.js](https://threejs.org/)
-- Icons: [Font Awesome](https://fontawesome.com/)
-- Fonts: [Google Fonts](https://fonts.google.com/)
+MIT
