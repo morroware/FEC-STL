@@ -130,7 +130,7 @@ foreach ($trendingModels as $index => $model) {
                     <a href="browse.php?sort=popular" class="btn btn-outline btn-sm">View All Popular</a>
                 </div>
 
-                <div class="model-grid">
+                <div class="model-grid" id="trending-models-grid">
                     <?php foreach ($trendingModels as $tm): ?>
                         <?php
                         $category = getCategory($tm['category']);
@@ -392,12 +392,13 @@ foreach ($trendingModels as $index => $model) {
 
                         currentPage++;
 
-                        // Initialize new thumbnail viewers
+                        // Initialize new thumbnail viewers (only within recent-models-grid)
                         grid.querySelectorAll('[data-model-thumb]:not([data-initialized])').forEach(container => {
                             const url = container.dataset.modelThumb;
-                            if (url) {
+                            // Double-check this container is actually in the recent models grid
+                            if (url && grid.contains(container)) {
                                 new ThumbnailViewer(container, url);
-                                container.dataset.initialized = 'true';
+                                // Note: data-initialized is already set inside ThumbnailViewer constructor
                             }
                         });
 
