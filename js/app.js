@@ -555,10 +555,45 @@ class STLViewer extends ModelViewer {
 // THUMBNAIL GENERATOR (Mini 3D Preview)
 // ============================================================================
 
+// Global registry to track active viewers and prevent WebGL context exhaustion
+const ThumbnailViewerRegistry = {
+    viewers: [],
+    maxViewers: 12, // Safe limit below browser's ~16 context limit
+
+    register(viewer) {
+        this.viewers.push(viewer);
+        this.enforceLimit();
+    },
+
+    unregister(viewer) {
+        const index = this.viewers.indexOf(viewer);
+        if (index > -1) {
+            this.viewers.splice(index, 1);
+        }
+    },
+
+    enforceLimit() {
+        while (this.viewers.length > this.maxViewers) {
+            const oldestViewer = this.viewers.shift();
+            if (oldestViewer && oldestViewer.dispose) {
+                console.log('Disposing oldest viewer to prevent WebGL context exhaustion');
+                oldestViewer.dispose();
+            }
+        }
+    }
+};
+
 class ThumbnailViewer {
     constructor(container, url) {
         this.container = container;
         this.url = url;
+        this.disposed = false;
+        this.animationId = null;
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.mesh = null;
+        this.model = null;
 
         // Prevent double initialization - check multiple indicators
         if (this.container.dataset.initialized === 'true' ||
@@ -573,6 +608,9 @@ class ThumbnailViewer {
         this.container._thumbnailViewer = this;
 
         this.init();
+
+        // Register this viewer in the global registry
+        ThumbnailViewerRegistry.register(this);
     }
 
     init() {
@@ -730,7 +768,9 @@ class ThumbnailViewer {
     }
 
     animate() {
-        requestAnimationFrame(() => this.animate());
+        if (this.disposed) return;
+
+        this.animationId = requestAnimationFrame(() => this.animate());
 
         if (this.mesh) {
             this.mesh.rotation.y += 0.005;
@@ -740,6 +780,63 @@ class ThumbnailViewer {
         }
 
         this.renderer.render(this.scene, this.camera);
+    }
+
+    dispose() {
+        if (this.disposed) return;
+
+        this.disposed = true;
+
+        // Cancel animation frame
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+
+        // Dispose geometries and materials
+        if (this.mesh) {
+            if (this.mesh.geometry) this.mesh.geometry.dispose();
+            if (this.mesh.material) this.mesh.material.dispose();
+            this.scene.remove(this.mesh);
+        }
+
+        if (this.model) {
+            this.model.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+            });
+            this.scene.remove(this.model);
+        }
+
+        // Dispose renderer
+        if (this.renderer) {
+            this.renderer.dispose();
+            if (this.renderer.domElement && this.renderer.domElement.parentNode) {
+                this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+            }
+        }
+
+        // Clear references
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.mesh = null;
+        this.model = null;
+
+        // Show static placeholder
+        if (this.container) {
+            this.container.innerHTML = `
+                <div class="model-placeholder">
+                    <i class="fas fa-cube"></i>
+                    <span class="placeholder-format">${this.getFileExtension(this.url).toUpperCase()}</span>
+                </div>
+            `;
+            this.container.classList.add('placeholder-active');
+        }
+
+        // Unregister from registry
+        ThumbnailViewerRegistry.unregister(this);
     }
 }
 
