@@ -312,6 +312,10 @@ switch ($action) {
         break;
         
     case 'download_model':
+        if (!isLoggedIn()) {
+            jsonResponse(['success' => false, 'error' => 'Please log in to download'], 401);
+        }
+
         $id = $_POST['id'] ?? $_GET['id'] ?? '';
         $model = getModel($id);
 
@@ -341,6 +345,10 @@ switch ($action) {
         break;
 
     case 'download_model_zip':
+        if (!isLoggedIn()) {
+            jsonResponse(['success' => false, 'error' => 'Please log in to download'], 401);
+        }
+
         $id = $_POST['id'] ?? $_GET['id'] ?? '';
         $model = getModel($id);
 

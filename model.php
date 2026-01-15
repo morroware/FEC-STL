@@ -384,24 +384,30 @@ foreach ($relatedModels as $index => $rm) {
                     
                     <!-- Actions -->
                     <div class="model-actions">
-                        <?php if ($fileCount > 1): ?>
-                        <button class="btn btn-primary btn-lg" onclick="downloadAllFiles()" style="width: 100%;">
-                            <i class="fas fa-file-archive"></i> Download All (<?= $fileCount ?> files)
-                        </button>
-                        <div class="download-individual" style="margin-top: 8px;">
-                            <span style="font-size: 0.85rem; color: var(--text-muted);">Or download individually:</span>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
-                                <?php foreach ($files as $idx => $f): ?>
-                                <button class="btn btn-outline btn-sm" onclick="downloadSingleFile(<?= $idx ?>)" title="<?= sanitize($f['original_name']) ?>">
-                                    <i class="fas fa-download"></i> <?= sanitize(substr($f['original_name'], 0, 12)) ?><?= strlen($f['original_name']) > 12 ? '...' : '' ?>
-                                </button>
-                                <?php endforeach; ?>
+                        <?php if (isLoggedIn()): ?>
+                            <?php if ($fileCount > 1): ?>
+                            <button class="btn btn-primary btn-lg" onclick="downloadAllFiles()" style="width: 100%;">
+                                <i class="fas fa-file-archive"></i> Download All (<?= $fileCount ?> files)
+                            </button>
+                            <div class="download-individual" style="margin-top: 8px;">
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">Or download individually:</span>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                                    <?php foreach ($files as $idx => $f): ?>
+                                    <button class="btn btn-outline btn-sm" onclick="downloadSingleFile(<?= $idx ?>)" title="<?= sanitize($f['original_name']) ?>">
+                                        <i class="fas fa-download"></i> <?= sanitize(substr($f['original_name'], 0, 12)) ?><?= strlen($f['original_name']) > 12 ? '...' : '' ?>
+                                    </button>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
-                        </div>
+                            <?php else: ?>
+                            <button class="btn btn-primary btn-lg" onclick="downloadModel('<?= $modelId ?>')" style="width: 100%;">
+                                <i class="fas fa-download"></i> Download Model
+                            </button>
+                            <?php endif; ?>
                         <?php else: ?>
-                        <button class="btn btn-primary btn-lg" onclick="downloadModel('<?= $modelId ?>')" style="width: 100%;">
-                            <i class="fas fa-download"></i> Download Model
-                        </button>
+                            <a href="login.php" class="btn btn-primary btn-lg" style="width: 100%; text-align: center;">
+                                <i class="fas fa-sign-in-alt"></i> Sign In to Download
+                            </a>
                         <?php endif; ?>
                         <div style="display: flex; gap: 12px; margin-top: 12px;">
                             <button class="btn btn-secondary <?= $isLiked ? 'liked' : '' ?>" onclick="likeModel('<?= $modelId ?>')" id="like-btn" style="flex: 1;" <?= $isLiked ? 'disabled' : '' ?>>
