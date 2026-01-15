@@ -605,6 +605,25 @@ foreach ($relatedModels as $index => $rm) {
                                    value="<?= sanitize(implode(', ', $model['tags'] ?? [])) ?>">
                             <div class="form-hint">Separate tags with commas</div>
                         </div>
+                        <?php if (!empty($photos) || !empty($files)): ?>
+                        <div class="form-group">
+                            <label class="form-label">Default Display</label>
+                            <select name="primary_display" id="edit-model-primary-display" class="form-select">
+                                <option value="0" <?= ($model['primary_display'] ?? 'auto') === '0' ? 'selected' : '' ?>>
+                                    3D Model - Show 3D preview in listings
+                                </option>
+                                <?php if (!empty($photos)): ?>
+                                <option value="photo" <?= ($model['primary_display'] ?? '') === 'photo' ? 'selected' : '' ?>>
+                                    Photo - Show photo in listings
+                                </option>
+                                <?php endif; ?>
+                                <option value="auto" <?= ($model['primary_display'] ?? 'auto') === 'auto' ? 'selected' : '' ?>>
+                                    Auto - <?= !empty($photos) ? 'Photo if available, else 3D' : '3D preview' ?>
+                                </option>
+                            </select>
+                            <div class="form-hint">Choose what to display as the cover image in browse/search results</div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="Modal.hide('edit-model-modal')">Cancel</button>
@@ -1252,6 +1271,8 @@ foreach ($relatedModels as $index => $rm) {
             const tagsInput = formData.get('tags');
             const tagsArray = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
             formData.set('tags', JSON.stringify(tagsArray));
+
+            // primary_display is already in the form, no conversion needed
 
             try {
                 const response = await fetch('api.php', {

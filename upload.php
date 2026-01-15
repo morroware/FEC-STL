@@ -128,8 +128,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // Get primary display preference
-            $primaryDisplay = $_POST['primary_display'] ?? 'auto';
+            // Get primary display preference (default to 3D model view when files are uploaded)
+            $primaryDisplay = $_POST['primary_display'] ?? '0';
 
             $modelId = createModel([
                 'user_id' => $_SESSION['user_id'],
@@ -1017,18 +1017,24 @@ $user = getCurrentUser();
 
             primaryDisplayGroup.style.display = 'block';
 
-            // Build options HTML
-            let optionsHtml = `
-                <label class="display-option active" data-value="auto">
-                    <input type="radio" name="primary_display" value="auto" checked>
-                    <div class="display-option-content">
-                        <i class="fas fa-magic"></i>
-                        <span>Auto</span>
-                        <small>${hasPhotos ? 'Uses photo' : 'Uses 3D preview'}</small>
-                    </div>
-                </label>
-            `;
+            // Build options HTML - default to 3D model when files are uploaded
+            let optionsHtml = '';
 
+            // 3D Model option first (default when files are uploaded)
+            if (hasFiles) {
+                optionsHtml += `
+                    <label class="display-option active" data-value="3d">
+                        <input type="radio" name="primary_display" value="0" checked>
+                        <div class="display-option-content">
+                            <i class="fas fa-cube"></i>
+                            <span>3D Model</span>
+                            <small>Show 3D preview in listings</small>
+                        </div>
+                    </label>
+                `;
+            }
+
+            // Photo option
             if (hasPhotos) {
                 optionsHtml += `
                     <label class="display-option" data-value="photo">
@@ -1042,18 +1048,17 @@ $user = getCurrentUser();
                 `;
             }
 
-            if (hasFiles) {
-                optionsHtml += `
-                    <label class="display-option" data-value="3d">
-                        <input type="radio" name="primary_display" value="0">
-                        <div class="display-option-content">
-                            <i class="fas fa-cube"></i>
-                            <span>3D Model</span>
-                            <small>Show 3D preview in listings</small>
-                        </div>
-                    </label>
-                `;
-            }
+            // Auto option last
+            optionsHtml += `
+                <label class="display-option" data-value="auto">
+                    <input type="radio" name="primary_display" value="auto">
+                    <div class="display-option-content">
+                        <i class="fas fa-magic"></i>
+                        <span>Auto</span>
+                        <small>${hasPhotos ? 'Uses photo' : 'Uses 3D preview'}</small>
+                    </div>
+                </label>
+            `;
 
             primaryDisplayOptions.innerHTML = optionsHtml;
 

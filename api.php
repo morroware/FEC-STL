@@ -287,7 +287,8 @@ switch ($action) {
         if (isset($_POST['category'])) $data['category'] = $_POST['category'];
         if (isset($_POST['tags'])) $data['tags'] = json_decode($_POST['tags'], true) ?? [];
         if (isset($_POST['license'])) $data['license'] = $_POST['license'];
-        
+        if (isset($_POST['primary_display'])) $data['primary_display'] = $_POST['primary_display'];
+
         if (updateModel($id, $data)) {
             jsonResponse(['success' => true]);
         } else {
