@@ -566,6 +566,9 @@ class ThumbnailViewer {
         this.renderer = null;
         this.mesh = null;
         this.model = null;
+        this.resizeObserver = null;
+        this.initAttempts = 0;
+        this.handleResize = this.handleResize.bind(this);
 
         // Prevent double initialization
         if (container.dataset.viewerInitialized === 'true') {
@@ -577,8 +580,12 @@ class ThumbnailViewer {
     }
 
     init() {
-        const width = this.container.clientWidth;
-        const height = this.container.clientHeight;
+        const { width, height } = this.getContainerSize();
+
+        if (!width || !height) {
+            this.deferInit();
+            return;
+        }
 
         this.container.innerHTML = '';
 
@@ -590,11 +597,18 @@ class ThumbnailViewer {
         this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
         // Renderer
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        try {
+            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        } catch (error) {
+            console.error('Failed to initialize thumbnail renderer:', error);
+            this.showPlaceholder();
+            return;
+        }
         this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.outputEncoding = THREE.sRGBEncoding;
         this.container.appendChild(this.renderer.domElement);
+        this.setupResizeObserver();
 
         // Lighting
         const ambient = new THREE.AmbientLight(0xffffff, 0.4);
@@ -615,6 +629,60 @@ class ThumbnailViewer {
 
         // Animate
         this.animate();
+    }
+
+    getContainerSize() {
+        const width = this.container.clientWidth;
+        let height = this.container.clientHeight;
+
+        if (!height && width) {
+            const fallbackHeight = Math.round(width * 0.75);
+            this.container.style.height = `${fallbackHeight}px`;
+            height = this.container.clientHeight || fallbackHeight;
+        }
+
+        return { width, height };
+    }
+
+    deferInit() {
+        if (this.disposed) return;
+
+        this.initAttempts += 1;
+        if (this.initAttempts > 10) {
+            this.showPlaceholder();
+            return;
+        }
+
+        requestAnimationFrame(() => this.init());
+    }
+
+    setupResizeObserver() {
+        if (this.resizeObserver || !this.renderer || !this.camera) return;
+
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', this.handleResize);
+            return;
+        }
+
+        this.resizeObserver = new ResizeObserver((entries) => {
+            entries.forEach((entry) => {
+                const { width, height } = entry.contentRect;
+                if (!width || !height || !this.renderer || !this.camera) return;
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(width, height);
+            });
+        });
+        this.resizeObserver.observe(this.container);
+    }
+
+    handleResize() {
+        if (!this.renderer || !this.camera) return;
+        const { width, height } = this.getContainerSize();
+        if (!width || !height) return;
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
     }
 
     showPlaceholder() {
@@ -776,6 +844,13 @@ class ThumbnailViewer {
             if (this.renderer.domElement && this.renderer.domElement.parentNode) {
                 this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
             }
+        }
+
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        } else {
+            window.removeEventListener('resize', this.handleResize);
         }
 
         // Clear references for garbage collection
