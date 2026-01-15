@@ -491,7 +491,7 @@ foreach ($relatedModels as $index => $rm) {
                                         <img src="uploads/<?= sanitize($rmPhotos[0]) ?>" alt="<?= sanitize($rm['title']) ?>">
                                     </div>
                                     <?php else: ?>
-                                    <div class="preview-placeholder">
+                                    <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($rm['filename']) ?>">
                                         <i class="fas fa-cube"></i>
                                     </div>
                                     <?php endif; ?>
