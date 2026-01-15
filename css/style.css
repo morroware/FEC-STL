@@ -1694,6 +1694,24 @@ h4 { font-size: 1.25rem; }
     .container {
         padding: 0 16px;
     }
+
+    .logo {
+        gap: 8px;
+        font-size: 1.1rem;
+        line-height: 1.1;
+        min-width: 0;
+    }
+
+    .logo-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    .logo span {
+        display: block;
+        white-space: normal;
+    }
     
     .hero-title {
         font-size: 2rem;
