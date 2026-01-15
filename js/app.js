@@ -1153,6 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = container.dataset.stlThumb || container.dataset.modelThumb;
         if (url) {
             new ThumbnailViewer(container, url);
+            container.dataset.initialized = 'true';
         }
     });
 
