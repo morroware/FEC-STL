@@ -125,21 +125,29 @@ switch ($action) {
         $sort = $_POST['sort'] ?? $_GET['sort'] ?? 'newest';
         $page = max(1, intval($_POST['page'] ?? $_GET['page'] ?? 1));
         $limit = min(50, max(1, intval($_POST['limit'] ?? $_GET['limit'] ?? 20)));
-        
+
         $models = searchModels($query, $category ?: null, $sort);
-        
+
         // Pagination
         $total = count($models);
         $totalPages = ceil($total / $limit);
         $offset = ($page - 1) * $limit;
         $models = array_slice($models, $offset, $limit);
-        
-        // Add user info
+
+        // Add user info, category info, and time_ago
         foreach ($models as &$model) {
             $user = getUser($model['user_id']);
             $model['author'] = $user ? $user['username'] : 'Unknown';
+
+            // Add category info for JS rendering
+            $cat = getCategory($model['category']);
+            $model['category_name'] = $cat ? $cat['name'] : '';
+            $model['category_icon'] = $cat ? $cat['icon'] : 'fa-cube';
+
+            // Add time_ago for JS rendering
+            $model['time_ago'] = timeAgo($model['created_at']);
         }
-        
+
         jsonResponse([
             'success' => true,
             'models' => $models,

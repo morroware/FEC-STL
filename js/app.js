@@ -1207,6 +1207,270 @@ function getFileFormatInfo(extension) {
     return SUPPORTED_FORMATS[extension.toLowerCase()] || { name: extension.toUpperCase(), hasColor: false };
 }
 
+// ============================================================================
+// INFINITE SCROLL / LAZY LOADING
+// ============================================================================
+
+class InfiniteScroll {
+    constructor(options = {}) {
+        this.options = {
+            container: null,           // Grid container element
+            sentinel: null,            // Element to observe (trigger element)
+            loadingIndicator: null,    // Loading spinner element
+            endpoint: 'get_models',    // API endpoint
+            params: {},                // Additional API params (query, category, sort)
+            limit: 20,                 // Items per page
+            threshold: '200px',        // How far from bottom to trigger load
+            onRender: null,            // Callback to render each item
+            onComplete: null,          // Callback when all items loaded
+            onError: null,             // Callback on error
+            ...options
+        };
+
+        this.page = 1;
+        this.loading = false;
+        this.hasMore = true;
+        this.totalLoaded = 0;
+        this.observer = null;
+
+        if (this.options.container && this.options.sentinel) {
+            this.init();
+        }
+    }
+
+    init() {
+        // Create IntersectionObserver
+        this.observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && !this.loading && this.hasMore) {
+                        this.loadMore();
+                    }
+                });
+            },
+            {
+                root: null,
+                rootMargin: this.options.threshold,
+                threshold: 0
+            }
+        );
+
+        // Start observing the sentinel element
+        this.observer.observe(this.options.sentinel);
+    }
+
+    async loadMore() {
+        if (this.loading || !this.hasMore) return;
+
+        this.loading = true;
+        this.showLoading(true);
+
+        try {
+            const response = await API.request(this.options.endpoint, {
+                ...this.options.params,
+                page: this.page,
+                limit: this.options.limit
+            });
+
+            if (response.success && response.models) {
+                const models = response.models;
+                const pagination = response.pagination;
+
+                // Render new items
+                models.forEach(model => {
+                    if (this.options.onRender) {
+                        this.options.onRender(model, this.options.container);
+                    }
+                });
+
+                this.totalLoaded += models.length;
+                this.page++;
+
+                // Check if there are more items
+                if (pagination) {
+                    this.hasMore = this.page <= pagination.total_pages;
+                } else {
+                    this.hasMore = models.length === this.options.limit;
+                }
+
+                // Initialize thumbnail viewers for new items
+                this.initNewThumbnails();
+
+                if (!this.hasMore) {
+                    this.onAllLoaded();
+                }
+            } else {
+                this.hasMore = false;
+                if (response.error && this.options.onError) {
+                    this.options.onError(response.error);
+                }
+            }
+        } catch (error) {
+            console.error('Infinite scroll error:', error);
+            if (this.options.onError) {
+                this.options.onError(error.message);
+            }
+        } finally {
+            this.loading = false;
+            this.showLoading(false);
+        }
+    }
+
+    showLoading(show) {
+        if (this.options.loadingIndicator) {
+            this.options.loadingIndicator.style.display = show ? 'flex' : 'none';
+        }
+    }
+
+    initNewThumbnails() {
+        // Initialize any new thumbnail viewers that were added
+        this.options.container.querySelectorAll('[data-model-thumb]:not([data-initialized])').forEach(container => {
+            const url = container.dataset.modelThumb;
+            if (url) {
+                new ThumbnailViewer(container, url);
+                container.dataset.initialized = 'true';
+            }
+        });
+    }
+
+    onAllLoaded() {
+        // Hide sentinel and show end message
+        if (this.options.sentinel) {
+            this.options.sentinel.innerHTML = `
+                <div class="infinite-scroll-end">
+                    <i class="fas fa-check-circle"></i>
+                    <span>You've reached the end</span>
+                </div>
+            `;
+        }
+
+        // Disconnect observer
+        if (this.observer) {
+            this.observer.disconnect();
+        }
+
+        if (this.options.onComplete) {
+            this.options.onComplete(this.totalLoaded);
+        }
+    }
+
+    // Reset and reload (useful when filters change)
+    reset() {
+        this.page = 1;
+        this.loading = false;
+        this.hasMore = true;
+        this.totalLoaded = 0;
+
+        // Clear container (except sentinel)
+        const sentinel = this.options.sentinel;
+        this.options.container.innerHTML = '';
+        this.options.container.appendChild(sentinel);
+
+        // Reset sentinel
+        sentinel.innerHTML = '';
+        sentinel.style.display = 'block';
+
+        // Reconnect observer
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer.observe(sentinel);
+        }
+    }
+
+    updateParams(newParams) {
+        this.options.params = { ...this.options.params, ...newParams };
+    }
+
+    destroy() {
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer = null;
+        }
+    }
+}
+
+// ============================================================================
+// MODEL CARD RENDERER (for infinite scroll)
+// ============================================================================
+
+function renderModelCard(model, container) {
+    const card = document.createElement('div');
+    card.className = 'card model-card';
+
+    // Prepare data
+    const fileCount = model.file_count || 1;
+    const photos = model.photos || (model.photo ? [model.photo] : []);
+    const hasPhotos = photos.length > 0;
+    const primaryDisplay = model.primary_display || 'auto';
+    const showPhoto = (primaryDisplay === 'photo' || primaryDisplay === 'auto') && hasPhotos;
+
+    // Category info
+    const categoryIcon = model.category_icon || 'fa-cube';
+    const categoryName = model.category_name || '';
+
+    card.innerHTML = `
+        <a href="model.php?id=${model.id}" class="model-card-preview ${showPhoto ? 'has-photo' : ''}" style="display: block; cursor: pointer;">
+            ${showPhoto ? `
+                <div class="preview-photo">
+                    <img src="uploads/${escapeHtml(photos[0])}" alt="${escapeHtml(model.title)}" loading="lazy">
+                </div>
+                <div class="photo-indicator">
+                    <i class="fas fa-camera"></i> Photo
+                </div>
+            ` : `
+                <div class="preview-placeholder" data-model-thumb="uploads/${escapeHtml(model.filename)}">
+                    <i class="fas fa-cube"></i>
+                </div>
+            `}
+            ${fileCount > 1 ? `
+                <div style="position: absolute; top: 12px; right: 12px; z-index: 3;">
+                    <span class="file-count-badge">${fileCount} files</span>
+                </div>
+            ` : ''}
+            <div class="model-card-overlay">
+                <div class="model-card-actions">
+                    <span class="btn btn-primary btn-sm">
+                        <i class="fas fa-eye"></i> View
+                    </span>
+                </div>
+            </div>
+        </a>
+        <div class="model-card-body">
+            ${categoryName ? `
+                <span class="model-card-category">
+                    <i class="fas ${escapeHtml(categoryIcon)}"></i>
+                    ${escapeHtml(categoryName)}
+                </span>
+            ` : ''}
+            <h3 class="model-card-title">
+                <a href="model.php?id=${model.id}">${escapeHtml(model.title)}</a>
+            </h3>
+            <div class="model-card-author">
+                <div class="author-avatar">
+                    ${(model.author || 'U').charAt(0).toUpperCase()}
+                </div>
+                <a href="profile.php?id=${model.user_id}">${escapeHtml(model.author || 'Unknown')}</a>
+            </div>
+            <div class="model-card-meta">
+                <span><i class="fas fa-download"></i> ${model.downloads || 0}</span>
+                <span><i class="fas fa-heart"></i> ${model.likes || 0}</span>
+                <span><i class="fas fa-clock"></i> ${model.time_ago || 'Recently'}</span>
+            </div>
+        </div>
+    `;
+
+    container.appendChild(card);
+    return card;
+}
+
+// HTML escape helper
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Export for use in pages
 window.ModelViewer = ModelViewer;
 window.STLViewer = STLViewer;
@@ -1219,3 +1483,5 @@ window.FileUploader = FileUploader;
 window.COLOR_PALETTE = COLOR_PALETTE;
 window.SUPPORTED_FORMATS = SUPPORTED_FORMATS;
 window.ALLOWED_EXTENSIONS = ALLOWED_EXTENSIONS;
+window.InfiniteScroll = InfiniteScroll;
+window.renderModelCard = renderModelCard;

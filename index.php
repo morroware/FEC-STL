@@ -143,7 +143,7 @@ foreach ($trendingModels as $index => $model) {
                             <a href="model.php?id=<?= $tm['id'] ?>" class="model-card-preview <?= $showPhoto ? 'has-photo' : '' ?>" style="display: block; cursor: pointer;">
                                 <?php if ($showPhoto): ?>
                                 <div class="preview-photo">
-                                    <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($tm['title']) ?>">
+                                    <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($tm['title']) ?>" loading="lazy">
                                 </div>
                                 <div class="photo-indicator">
                                     <i class="fas fa-camera"></i> Photo
@@ -247,7 +247,7 @@ foreach ($trendingModels as $index => $model) {
                 </h2>
                 <a href="browse.php?sort=newest" class="btn btn-outline btn-sm">View All</a>
             </div>
-            
+
             <?php if (empty($recentModels)): ?>
                 <div class="empty-state">
                     <i class="fas fa-cube"></i>
@@ -260,7 +260,7 @@ foreach ($trendingModels as $index => $model) {
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <div class="model-grid">
+                <div class="model-grid" id="recent-models-grid">
                     <?php foreach ($recentModels as $model): ?>
                         <?php
                         $category = getCategory($model['category']);
@@ -274,7 +274,7 @@ foreach ($trendingModels as $index => $model) {
                             <a href="model.php?id=<?= $model['id'] ?>" class="model-card-preview <?= $showPhoto ? 'has-photo' : '' ?>" style="display: block; cursor: pointer;">
                                 <?php if ($showPhoto): ?>
                                 <div class="preview-photo">
-                                    <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($model['title']) ?>">
+                                    <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($model['title']) ?>" loading="lazy">
                                 </div>
                                 <div class="photo-indicator">
                                     <i class="fas fa-camera"></i> Photo
@@ -322,6 +322,14 @@ foreach ($trendingModels as $index => $model) {
                         </div>
                     <?php endforeach; ?>
                 </div>
+
+                <!-- Load More Button -->
+                <div class="load-more-container" id="load-more-container">
+                    <button id="load-more-btn" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-plus"></i> Load More Models
+                    </button>
+                    <div id="load-more-spinner" class="loading-spinner" style="display: none;"></div>
+                </div>
             <?php endif; ?>
         </section>
     </div>
@@ -348,5 +356,87 @@ foreach ($trendingModels as $index => $model) {
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
+    <script>
+        // Load More functionality for Recent Models
+        document.addEventListener('DOMContentLoaded', function() {
+            const grid = document.getElementById('recent-models-grid');
+            const loadMoreBtn = document.getElementById('load-more-btn');
+            const loadMoreSpinner = document.getElementById('load-more-spinner');
+            const loadMoreContainer = document.getElementById('load-more-container');
+
+            if (!grid || !loadMoreBtn) return;
+
+            let currentPage = 1;
+            const limit = 8;
+            let loading = false;
+            let hasMore = true;
+
+            loadMoreBtn.addEventListener('click', async function() {
+                if (loading || !hasMore) return;
+
+                loading = true;
+                loadMoreBtn.style.display = 'none';
+                loadMoreSpinner.style.display = 'block';
+
+                try {
+                    const response = await API.request('get_models', {
+                        sort: 'newest',
+                        page: currentPage + 1,
+                        limit: limit
+                    });
+
+                    if (response.success && response.models && response.models.length > 0) {
+                        response.models.forEach(model => {
+                            renderModelCard(model, grid);
+                        });
+
+                        currentPage++;
+
+                        // Initialize new thumbnail viewers
+                        grid.querySelectorAll('[data-model-thumb]:not([data-initialized])').forEach(container => {
+                            const url = container.dataset.modelThumb;
+                            if (url) {
+                                new ThumbnailViewer(container, url);
+                                container.dataset.initialized = 'true';
+                            }
+                        });
+
+                        // Check if there are more
+                        if (response.pagination) {
+                            hasMore = currentPage < response.pagination.total_pages;
+                        } else {
+                            hasMore = response.models.length === limit;
+                        }
+
+                        if (!hasMore) {
+                            loadMoreContainer.innerHTML = `
+                                <div class="infinite-scroll-end">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>All models loaded</span>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        hasMore = false;
+                        loadMoreContainer.innerHTML = `
+                            <div class="infinite-scroll-end">
+                                <i class="fas fa-check-circle"></i>
+                                <span>All models loaded</span>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Load more error:', error);
+                    Toast.error('Failed to load more models');
+                } finally {
+                    loading = false;
+                    if (hasMore) {
+                        loadMoreBtn.style.display = 'inline-flex';
+                    }
+                    loadMoreSpinner.style.display = 'none';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
