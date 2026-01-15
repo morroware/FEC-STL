@@ -6,12 +6,19 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 
+// Check maintenance mode (allow admins to bypass)
+if (isMaintenanceMode() && !isAdmin()) {
+    $maintenanceMessage = setting('maintenance_message', 'We are currently performing maintenance. Please check back soon.');
+    include __DIR__ . '/includes/maintenance.php';
+    exit;
+}
+
 // Get parameters
 $query = $_GET['q'] ?? '';
 $categoryFilter = $_GET['category'] ?? '';
-$sort = $_GET['sort'] ?? 'newest';
+$sort = $_GET['sort'] ?? setting('default_sort', 'newest');
 $page = max(1, intval($_GET['page'] ?? 1));
-$limit = 16;
+$limit = (int)setting('items_per_page', 12);
 
 // Get data
 $categories = getCategories();

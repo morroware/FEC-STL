@@ -845,6 +845,65 @@ if (USE_MYSQL) {
         ];
     }
 
+    /**
+     * Settings Operations (MySQL)
+     */
+    function getSettings(): array {
+        $conn = getDbConnection();
+
+        // Check if settings table exists
+        $result = $conn->query("SHOW TABLES LIKE 'settings'");
+        if ($result->num_rows === 0) {
+            // Create settings table
+            $conn->query("
+                CREATE TABLE IF NOT EXISTS settings (
+                    setting_key VARCHAR(100) PRIMARY KEY,
+                    setting_value TEXT,
+                    setting_type VARCHAR(20) DEFAULT 'string',
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )
+            ");
+            // Initialize with defaults
+            initializeSettings();
+        }
+
+        $result = $conn->query("SELECT * FROM settings");
+        $settings = [];
+        while ($row = $result->fetch_assoc()) {
+            $settings[$row['setting_key']] = castSettingValue($row['setting_value'], $row['setting_type']);
+        }
+
+        return array_merge(getDefaultSettings(), $settings);
+    }
+
+    function getSetting(string $key, $default = null) {
+        $settings = getSettings();
+        return $settings[$key] ?? $default;
+    }
+
+    function setSetting(string $key, $value): bool {
+        $conn = getDbConnection();
+        $type = getSettingType($value);
+        $stringValue = convertSettingToString($value, $type);
+
+        $stmt = $conn->prepare("
+            INSERT INTO settings (setting_key, setting_value, setting_type)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE setting_value = ?, setting_type = ?
+        ");
+        $stmt->bind_param("sssss", $key, $stringValue, $type, $stringValue, $type);
+        return $stmt->execute();
+    }
+
+    function setSettings(array $settings): bool {
+        foreach ($settings as $key => $value) {
+            if (!setSetting($key, $value)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 } else {
     // ============================================================================
     // JSON FALLBACK IMPLEMENTATION
@@ -1407,5 +1466,211 @@ if (USE_MYSQL) {
             'total_categories' => count(getCategories())
         ];
     }
+
+    /**
+     * Settings Operations (JSON)
+     */
+    define('SETTINGS_FILE', DATA_DIR . 'settings.json');
+
+    function getSettings(): array {
+        if (!file_exists(SETTINGS_FILE)) {
+            initializeSettings();
+        }
+        $settings = readJsonFile(SETTINGS_FILE);
+        return array_merge(getDefaultSettings(), $settings);
+    }
+
+    function getSetting(string $key, $default = null) {
+        $settings = getSettings();
+        return $settings[$key] ?? $default;
+    }
+
+    function setSetting(string $key, $value): bool {
+        $settings = getSettings();
+        $settings[$key] = $value;
+        return writeJsonFile(SETTINGS_FILE, $settings);
+    }
+
+    function setSettings(array $newSettings): bool {
+        $settings = getSettings();
+        $settings = array_merge($settings, $newSettings);
+        return writeJsonFile(SETTINGS_FILE, $settings);
+    }
+}
+
+/**
+ * Shared Settings Helper Functions
+ */
+function getDefaultSettings(): array {
+    return [
+        // Site Configuration
+        'site_name' => 'Community 3D Model Vault',
+        'site_tagline' => 'Share. Print. Play.',
+        'site_description' => 'A community-driven platform for sharing 3D printable models',
+        'contact_email' => 'admin@example.com',
+        'maintenance_mode' => false,
+        'maintenance_message' => 'We are currently performing maintenance. Please check back soon.',
+
+        // Registration & Users
+        'allow_registration' => true,
+        'require_email_verification' => false,
+        'default_user_role' => 'user',
+
+        // Upload Settings
+        'max_file_size' => 50, // MB
+        'max_files_per_model' => 10,
+        'max_photos_per_model' => 5,
+        'allowed_extensions' => 'stl,obj',
+
+        // Feature Toggles
+        'enable_downloads' => true,
+        'enable_likes' => true,
+        'enable_favorites' => true,
+        'enable_comments' => false,
+        'enable_user_profiles' => true,
+
+        // Display Settings
+        'items_per_page' => 12,
+        'default_license' => 'CC BY-NC',
+        'default_sort' => 'newest',
+        'show_download_count' => true,
+        'show_like_count' => true,
+        'show_view_count' => true,
+
+        // 3D Viewer Settings
+        'default_model_color' => '#00ffff',
+        'enable_auto_rotate' => false,
+        'enable_wireframe_toggle' => true,
+        'enable_grid' => true,
+    ];
+}
+
+function initializeSettings(): void {
+    $defaults = getDefaultSettings();
+    if (USE_MYSQL) {
+        $conn = getDbConnection();
+        foreach ($defaults as $key => $value) {
+            $type = getSettingType($value);
+            $stringValue = convertSettingToString($value, $type);
+            $stmt = $conn->prepare("
+                INSERT IGNORE INTO settings (setting_key, setting_value, setting_type)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->bind_param("sss", $key, $stringValue, $type);
+            $stmt->execute();
+        }
+    } else {
+        if (!defined('SETTINGS_FILE')) {
+            define('SETTINGS_FILE', DATA_DIR . 'settings.json');
+        }
+        if (!file_exists(SETTINGS_FILE)) {
+            file_put_contents(SETTINGS_FILE, json_encode($defaults, JSON_PRETTY_PRINT));
+        }
+    }
+}
+
+function getSettingType($value): string {
+    if (is_bool($value)) return 'boolean';
+    if (is_int($value)) return 'integer';
+    if (is_float($value)) return 'float';
+    if (is_array($value)) return 'json';
+    return 'string';
+}
+
+function convertSettingToString($value, string $type): string {
+    switch ($type) {
+        case 'boolean':
+            return $value ? '1' : '0';
+        case 'json':
+            return json_encode($value);
+        default:
+            return (string)$value;
+    }
+}
+
+function castSettingValue(string $value, string $type) {
+    switch ($type) {
+        case 'boolean':
+            return $value === '1' || $value === 'true';
+        case 'integer':
+            return (int)$value;
+        case 'float':
+            return (float)$value;
+        case 'json':
+            return json_decode($value, true);
+        default:
+            return $value;
+    }
+}
+
+/**
+ * Get all settings organized by category for admin UI
+ */
+function getSettingsSchema(): array {
+    return [
+        'site' => [
+            'label' => 'Site Configuration',
+            'icon' => 'fa-globe',
+            'settings' => [
+                'site_name' => ['label' => 'Site Name', 'type' => 'text', 'description' => 'The name of your site'],
+                'site_tagline' => ['label' => 'Tagline', 'type' => 'text', 'description' => 'A short slogan or tagline'],
+                'site_description' => ['label' => 'Description', 'type' => 'textarea', 'description' => 'Site description for SEO'],
+                'contact_email' => ['label' => 'Contact Email', 'type' => 'email', 'description' => 'Primary contact email'],
+                'maintenance_mode' => ['label' => 'Maintenance Mode', 'type' => 'toggle', 'description' => 'Put the site in maintenance mode'],
+                'maintenance_message' => ['label' => 'Maintenance Message', 'type' => 'textarea', 'description' => 'Message shown during maintenance'],
+            ]
+        ],
+        'users' => [
+            'label' => 'Users & Registration',
+            'icon' => 'fa-users',
+            'settings' => [
+                'allow_registration' => ['label' => 'Allow Registration', 'type' => 'toggle', 'description' => 'Allow new users to register'],
+                'require_email_verification' => ['label' => 'Require Email Verification', 'type' => 'toggle', 'description' => 'Require email verification before login'],
+                'enable_user_profiles' => ['label' => 'Enable User Profiles', 'type' => 'toggle', 'description' => 'Allow users to have public profiles'],
+            ]
+        ],
+        'uploads' => [
+            'label' => 'Upload Settings',
+            'icon' => 'fa-upload',
+            'settings' => [
+                'max_file_size' => ['label' => 'Max File Size (MB)', 'type' => 'number', 'min' => 1, 'max' => 500, 'description' => 'Maximum upload size per file'],
+                'max_files_per_model' => ['label' => 'Max Files per Model', 'type' => 'number', 'min' => 1, 'max' => 50, 'description' => 'Maximum 3D files per model upload'],
+                'max_photos_per_model' => ['label' => 'Max Photos per Model', 'type' => 'number', 'min' => 1, 'max' => 20, 'description' => 'Maximum photos per model'],
+                'allowed_extensions' => ['label' => 'Allowed File Types', 'type' => 'text', 'description' => 'Comma-separated list (e.g., stl,obj,3mf)'],
+            ]
+        ],
+        'features' => [
+            'label' => 'Features',
+            'icon' => 'fa-toggle-on',
+            'settings' => [
+                'enable_downloads' => ['label' => 'Enable Downloads', 'type' => 'toggle', 'description' => 'Allow users to download models'],
+                'enable_likes' => ['label' => 'Enable Likes', 'type' => 'toggle', 'description' => 'Allow users to like models'],
+                'enable_favorites' => ['label' => 'Enable Favorites', 'type' => 'toggle', 'description' => 'Allow users to favorite models'],
+                'enable_comments' => ['label' => 'Enable Comments', 'type' => 'toggle', 'description' => 'Allow comments on models (coming soon)'],
+            ]
+        ],
+        'display' => [
+            'label' => 'Display Settings',
+            'icon' => 'fa-desktop',
+            'settings' => [
+                'items_per_page' => ['label' => 'Items Per Page', 'type' => 'select', 'options' => [6, 12, 24, 48], 'description' => 'Number of models shown per page'],
+                'default_sort' => ['label' => 'Default Sort', 'type' => 'select', 'options' => ['newest' => 'Newest', 'oldest' => 'Oldest', 'popular' => 'Most Downloaded', 'likes' => 'Most Liked'], 'description' => 'Default sort order for model listings'],
+                'default_license' => ['label' => 'Default License', 'type' => 'select', 'options' => ['CC BY' => 'CC BY', 'CC BY-SA' => 'CC BY-SA', 'CC BY-NC' => 'CC BY-NC', 'CC BY-NC-SA' => 'CC BY-NC-SA', 'CC0' => 'CC0', 'MIT' => 'MIT', 'GPL' => 'GPL'], 'description' => 'Default license for new uploads'],
+                'show_download_count' => ['label' => 'Show Download Count', 'type' => 'toggle', 'description' => 'Display download counts on models'],
+                'show_like_count' => ['label' => 'Show Like Count', 'type' => 'toggle', 'description' => 'Display like counts on models'],
+                'show_view_count' => ['label' => 'Show View Count', 'type' => 'toggle', 'description' => 'Display view counts on models'],
+            ]
+        ],
+        'viewer' => [
+            'label' => '3D Viewer',
+            'icon' => 'fa-cube',
+            'settings' => [
+                'default_model_color' => ['label' => 'Default Model Color', 'type' => 'color', 'description' => 'Default color for 3D models'],
+                'enable_auto_rotate' => ['label' => 'Auto-Rotate by Default', 'type' => 'toggle', 'description' => 'Enable auto-rotation on model viewer'],
+                'enable_wireframe_toggle' => ['label' => 'Wireframe Toggle', 'type' => 'toggle', 'description' => 'Show wireframe toggle button'],
+                'enable_grid' => ['label' => 'Show Grid', 'type' => 'toggle', 'description' => 'Show grid in 3D viewer by default'],
+            ]
+        ],
+    ];
 }
 ?>

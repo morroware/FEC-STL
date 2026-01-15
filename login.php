@@ -12,13 +12,14 @@ if (isLoggedIn()) {
 }
 
 $showRegister = isset($_GET['register']);
+$allowRegistration = setting('allow_registration', true);
 $error = '';
 $success = '';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['form_action'] ?? '';
-    
+
     if ($action === 'login') {
         $username = $_POST['username'] ?? '';
         $password = $_POST['password'] ?? '';
@@ -38,13 +39,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($action === 'register') {
-        $username = trim($_POST['username'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $confirmPassword = $_POST['confirm_password'] ?? '';
-        
-        // Validation
-        if (!$username || !$email || !$password) {
+        // Check if registration is allowed
+        if (!$allowRegistration) {
+            $error = 'Registration is currently disabled';
+        } else {
+            $username = trim($_POST['username'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $password = $_POST['password'] ?? '';
+            $confirmPassword = $_POST['confirm_password'] ?? '';
+
+            // Validation
+            if (!$username || !$email || !$password) {
             $error = 'Please fill in all fields';
         } elseif (strlen($username) < 3 || strlen($username) > 20) {
             $error = 'Username must be 3-20 characters';
@@ -75,7 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Failed to create account. Please try again.';
             }
         }
-        
+        } // End registration allowed check
+
         $showRegister = true;
     }
 }
@@ -128,9 +134,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="auth-tab <?= !$showRegister ? 'active' : '' ?>" onclick="window.location='login.php'">
                         Sign In
                     </div>
+                    <?php if ($allowRegistration): ?>
                     <div class="auth-tab <?= $showRegister ? 'active' : '' ?>" onclick="window.location='login.php?register=1'">
                         Register
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <?php if ($error): ?>
@@ -148,6 +156,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <?php if ($showRegister): ?>
+                    <?php if (!$allowRegistration): ?>
+                        <!-- Registration Disabled Message -->
+                        <div class="alert alert-error" style="margin-top: 20px;">
+                            <i class="fas fa-ban"></i>
+                            Registration is currently disabled. Please contact the administrator.
+                        </div>
+                        <div class="auth-footer">
+                            <a href="login.php">Back to Sign In</a>
+                        </div>
+                    <?php else: ?>
                     <!-- Register Form -->
                     <form method="POST" action="login.php?register=1">
                         <input type="hidden" name="form_action" value="register">
@@ -186,10 +204,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="fas fa-user-plus"></i> Create Account
                         </button>
                     </form>
-                    
+
                     <div class="auth-footer">
                         Already have an account? <a href="login.php">Sign in</a>
                     </div>
+                    <?php endif; ?>
                 <?php else: ?>
                     <!-- Login Form -->
                     <form method="POST" action="login.php<?= isset($_GET['redirect']) ? '?redirect=' . urlencode($_GET['redirect']) : '' ?>">

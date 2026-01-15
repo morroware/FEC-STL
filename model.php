@@ -6,6 +6,13 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 
+// Check maintenance mode (allow admins to bypass)
+if (isMaintenanceMode() && !isAdmin()) {
+    $maintenanceMessage = setting('maintenance_message', 'We are currently performing maintenance. Please check back soon.');
+    include __DIR__ . '/includes/maintenance.php';
+    exit;
+}
+
 $modelId = $_GET['id'] ?? '';
 $model = getModel($modelId);
 

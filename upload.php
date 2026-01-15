@@ -44,12 +44,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uploadedFiles = [];
         $hasError = false;
 
-        // Supported 3D printing file formats
-        $allowedExtensions = ['stl', 'obj'];
+        // Get allowed extensions and max file size from settings
+        $allowedExtensions = getAllowedExtensions();
+        $maxFileSize = getMaxFileSize();
+        $maxFilesPerModel = (int)setting('max_files_per_model', 10);
 
         // Process multiple files
         $fileCount = count($_FILES['model_files']['name']);
         $totalSize = 0;
+
+        // Check max files limit
+        if ($fileCount > $maxFilesPerModel) {
+            $error = "Maximum of {$maxFilesPerModel} files allowed per model";
+            $hasError = true;
+        }
 
         for ($i = 0; $i < $fileCount; $i++) {
             if ($_FILES['model_files']['error'][$i] !== UPLOAD_ERR_OK) continue;
@@ -65,8 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
 
-            if ($size > MAX_FILE_SIZE) {
-                $error = 'File too large (max 50MB): ' . $originalName;
+            if ($size > $maxFileSize) {
+                $maxMB = setting('max_file_size', 50);
+                $error = "File too large (max {$maxMB}MB): " . $originalName;
                 $hasError = true;
                 break;
             }
@@ -256,14 +265,20 @@ $user = getCurrentUser();
 
                     <div class="form-group">
                         <label class="form-label required">3D model files</label>
+                        <?php
+                        $uploadExtensions = getAllowedExtensions();
+                        $uploadMaxMB = (int)setting('max_file_size', 50);
+                        $acceptAttr = '.' . implode(',.', $uploadExtensions);
+                        $formatsDisplay = strtoupper(implode(', ', $uploadExtensions));
+                        ?>
                         <div class="file-upload" id="file-dropzone">
-                            <input type="file" name="model_files[]" accept=".stl,.obj" multiple required>
+                            <input type="file" name="model_files[]" accept="<?= $acceptAttr ?>" multiple required>
                             <div class="file-upload-icon">
                                 <i class="fas fa-cloud-upload-alt"></i>
                             </div>
                             <div class="file-upload-text">
                                 <strong>Click to choose files</strong> or drag and drop<br>
-                                <small>Formats: STL, OBJ (max 50MB each)</small>
+                                <small>Formats: <?= $formatsDisplay ?> (max <?= $uploadMaxMB ?>MB each)</small>
                             </div>
                         </div>
                         <div class="form-hint" style="margin-top: 8px;">
@@ -526,6 +541,11 @@ $user = getCurrentUser();
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
     <script>
+        // Settings from PHP
+        window.ALLOWED_EXTENSIONS = <?= json_encode(getAllowedExtensions()) ?>;
+        window.MAX_FILE_SIZE_MB = <?= (int)setting('max_file_size', 50) ?>;
+        window.MAX_FILES_PER_MODEL = <?= (int)setting('max_files_per_model', 10) ?>;
+
         // Multi-file upload with preview
         const dropzone = document.getElementById('file-dropzone');
         const fileInput = dropzone.querySelector('input[type="file"]');
@@ -596,8 +616,9 @@ $user = getCurrentUser();
                     Toast.error(`Unsupported format: ${file.name}. Allowed: ${allowedExtensions.join(', ').toUpperCase()}`);
                     return;
                 }
-                if (file.size > 50 * 1024 * 1024) {
-                    Toast.error(`File too large (max 50MB): ${file.name}`);
+                const maxSize = (window.MAX_FILE_SIZE_MB || 50) * 1024 * 1024;
+                if (file.size > maxSize) {
+                    Toast.error(`File too large (max ${window.MAX_FILE_SIZE_MB || 50}MB): ${file.name}`);
                     return;
                 }
                 validFiles.push(file);

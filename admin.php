@@ -116,6 +116,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Failed to delete model';
             }
             break;
+
+        case 'save_settings':
+            $settingsToSave = [];
+            $schema = getSettingsSchema();
+
+            foreach ($schema as $category => $categoryData) {
+                foreach ($categoryData['settings'] as $key => $config) {
+                    if ($config['type'] === 'toggle') {
+                        // Checkboxes are only present when checked
+                        $settingsToSave[$key] = isset($_POST[$key]);
+                    } elseif ($config['type'] === 'number') {
+                        $settingsToSave[$key] = (int)($_POST[$key] ?? 0);
+                    } else {
+                        if (isset($_POST[$key])) {
+                            $settingsToSave[$key] = $_POST[$key];
+                        }
+                    }
+                }
+            }
+
+            if (setSettings($settingsToSave)) {
+                $success = 'Settings saved successfully';
+            } else {
+                $error = 'Failed to save settings';
+            }
+            break;
     }
 }
 
@@ -203,6 +229,11 @@ $faIcons = [
                         <li>
                             <a href="admin.php?section=models" class="<?= $section === 'models' ? 'active' : '' ?>">
                                 <i class="fas fa-cube"></i> Models
+                            </a>
+                        </li>
+                        <li>
+                            <a href="admin.php?section=settings" class="<?= $section === 'settings' ? 'active' : '' ?>">
+                                <i class="fas fa-sliders-h"></i> Settings
                             </a>
                         </li>
                     </ul>
@@ -489,6 +520,111 @@ $faIcons = [
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+
+                    <?php elseif ($section === 'settings'): ?>
+                        <!-- Settings Management -->
+                        <?php
+                        $currentSettings = getSettings();
+                        $settingsSchema = getSettingsSchema();
+                        ?>
+                        <div class="admin-header">
+                            <h2>Settings</h2>
+                        </div>
+
+                        <form method="POST" action="admin.php?section=settings" class="settings-form">
+                            <input type="hidden" name="action" value="save_settings">
+
+                            <div class="settings-tabs">
+                                <?php $first = true; foreach ($settingsSchema as $catKey => $category): ?>
+                                    <button type="button" class="settings-tab <?= $first ? 'active' : '' ?>" data-tab="<?= $catKey ?>">
+                                        <i class="fas <?= $category['icon'] ?>"></i>
+                                        <span><?= sanitize($category['label']) ?></span>
+                                    </button>
+                                <?php $first = false; endforeach; ?>
+                            </div>
+
+                            <?php $first = true; foreach ($settingsSchema as $catKey => $category): ?>
+                                <div class="settings-panel <?= $first ? 'active' : '' ?>" id="settings-<?= $catKey ?>">
+                                    <div class="settings-panel-header">
+                                        <i class="fas <?= $category['icon'] ?>"></i>
+                                        <h3><?= sanitize($category['label']) ?></h3>
+                                    </div>
+
+                                    <div class="settings-grid">
+                                        <?php foreach ($category['settings'] as $key => $config): ?>
+                                            <div class="setting-item">
+                                                <div class="setting-label">
+                                                    <label for="<?= $key ?>"><?= sanitize($config['label']) ?></label>
+                                                    <span class="setting-description"><?= sanitize($config['description']) ?></span>
+                                                </div>
+                                                <div class="setting-input">
+                                                    <?php
+                                                    $value = $currentSettings[$key] ?? '';
+                                                    switch ($config['type']):
+                                                        case 'toggle': ?>
+                                                            <label class="toggle-switch">
+                                                                <input type="checkbox" name="<?= $key ?>" id="<?= $key ?>" <?= $value ? 'checked' : '' ?>>
+                                                                <span class="toggle-slider"></span>
+                                                            </label>
+                                                        <?php break;
+                                                        case 'text':
+                                                        case 'email': ?>
+                                                            <input type="<?= $config['type'] ?>" name="<?= $key ?>" id="<?= $key ?>"
+                                                                   class="form-input" value="<?= sanitize($value) ?>">
+                                                        <?php break;
+                                                        case 'textarea': ?>
+                                                            <textarea name="<?= $key ?>" id="<?= $key ?>"
+                                                                      class="form-textarea" rows="2"><?= sanitize($value) ?></textarea>
+                                                        <?php break;
+                                                        case 'number': ?>
+                                                            <input type="number" name="<?= $key ?>" id="<?= $key ?>"
+                                                                   class="form-input" value="<?= (int)$value ?>"
+                                                                   <?= isset($config['min']) ? 'min="'.$config['min'].'"' : '' ?>
+                                                                   <?= isset($config['max']) ? 'max="'.$config['max'].'"' : '' ?>>
+                                                        <?php break;
+                                                        case 'color': ?>
+                                                            <input type="color" name="<?= $key ?>" id="<?= $key ?>"
+                                                                   class="form-color" value="<?= sanitize($value) ?>">
+                                                        <?php break;
+                                                        case 'select': ?>
+                                                            <select name="<?= $key ?>" id="<?= $key ?>" class="form-select">
+                                                                <?php
+                                                                $options = $config['options'];
+                                                                if (is_array($options) && !array_keys($options) !== range(0, count($options) - 1)):
+                                                                    // Associative array
+                                                                    foreach ($options as $optVal => $optLabel): ?>
+                                                                        <option value="<?= is_int($optVal) ? $optVal : sanitize($optVal) ?>"
+                                                                            <?= $value == $optVal ? 'selected' : '' ?>>
+                                                                            <?= sanitize($optLabel) ?>
+                                                                        </option>
+                                                                    <?php endforeach;
+                                                                else:
+                                                                    // Simple array
+                                                                    foreach ($options as $opt): ?>
+                                                                        <option value="<?= $opt ?>" <?= $value == $opt ? 'selected' : '' ?>>
+                                                                            <?= $opt ?>
+                                                                        </option>
+                                                                    <?php endforeach;
+                                                                endif; ?>
+                                                            </select>
+                                                        <?php break;
+                                                    endswitch; ?>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php $first = false; endforeach; ?>
+
+                            <div class="settings-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Settings
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="location.reload()">
+                                    <i class="fas fa-undo"></i> Reset
+                                </button>
+                            </div>
+                        </form>
                     <?php endif; ?>
                 </main>
             </div>
@@ -755,6 +891,23 @@ $faIcons = [
             if (categoryFilter) {
                 categoryFilter.addEventListener('change', filterModels);
             }
+
+            // Settings tabs functionality
+            const settingsTabs = document.querySelectorAll('.settings-tab');
+            const settingsPanels = document.querySelectorAll('.settings-panel');
+
+            settingsTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const targetTab = this.dataset.tab;
+
+                    // Update active states
+                    settingsTabs.forEach(t => t.classList.remove('active'));
+                    settingsPanels.forEach(p => p.classList.remove('active'));
+
+                    this.classList.add('active');
+                    document.getElementById('settings-' + targetTab).classList.add('active');
+                });
+            });
         });
     </script>
 </body>
