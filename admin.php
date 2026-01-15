@@ -339,8 +339,16 @@ $faIcons = [
                         <div class="admin-header">
                             <h2>Users</h2>
                         </div>
-                        
-                        <table class="data-table">
+
+                        <!-- Search Bar -->
+                        <div class="search-filter-bar" style="margin-bottom: 20px;">
+                            <div class="search-input-wrapper" style="position: relative; max-width: 400px;">
+                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                                <input type="text" id="user-search" class="form-input" placeholder="Search by username or email..." style="padding-left: 40px;">
+                            </div>
+                        </div>
+
+                        <table class="data-table" id="users-table">
                             <thead>
                                 <tr>
                                     <th>User</th>
@@ -353,7 +361,7 @@ $faIcons = [
                             </thead>
                             <tbody>
                                 <?php foreach ($users as $user): ?>
-                                    <tr>
+                                    <tr data-username="<?= strtolower(sanitize($user['username'])) ?>" data-email="<?= strtolower(sanitize($user['email'])) ?>">
                                         <td>
                                             <div style="display: flex; align-items: center; gap: 10px;">
                                                 <div class="author-avatar">
@@ -408,8 +416,22 @@ $faIcons = [
                         <div class="admin-header">
                             <h2>Models</h2>
                         </div>
-                        
-                        <table class="data-table">
+
+                        <!-- Search and Filter Bar -->
+                        <div class="search-filter-bar" style="margin-bottom: 20px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                            <div class="search-input-wrapper" style="position: relative; flex: 1; min-width: 250px; max-width: 400px;">
+                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                                <input type="text" id="model-search" class="form-input" placeholder="Search by title or author..." style="padding-left: 40px;">
+                            </div>
+                            <select id="model-category-filter" class="form-select" style="min-width: 150px;">
+                                <option value="">All Categories</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?= strtolower(sanitize($cat['name'])) ?>"><?= sanitize($cat['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <table class="data-table" id="models-table">
                             <thead>
                                 <tr>
                                     <th>Title</th>
@@ -422,27 +444,41 @@ $faIcons = [
                             </thead>
                             <tbody>
                                 <?php foreach ($models as $model): ?>
-                                    <?php 
+                                    <?php
                                     $author = getUser($model['user_id']);
                                     $cat = getCategory($model['category']);
+                                    $authorName = $author ? $author['username'] : 'Unknown';
+                                    $catName = $cat ? $cat['name'] : '';
                                     ?>
-                                    <tr>
+                                    <tr data-title="<?= strtolower(sanitize($model['title'])) ?>"
+                                        data-author="<?= strtolower(sanitize($authorName)) ?>"
+                                        data-category="<?= strtolower(sanitize($catName)) ?>">
                                         <td>
                                             <a href="model.php?id=<?= $model['id'] ?>"><?= sanitize($model['title']) ?></a>
                                         </td>
-                                        <td><?= $author ? sanitize($author['username']) : 'Unknown' ?></td>
-                                        <td><?= $cat ? sanitize($cat['name']) : '-' ?></td>
+                                        <td><?= sanitize($authorName) ?></td>
+                                        <td><?= $catName ?: '-' ?></td>
                                         <td><?= $model['downloads'] ?? 0 ?></td>
                                         <td><?= timeAgo($model['created_at']) ?></td>
                                         <td class="actions">
-                                            <a href="model.php?id=<?= $model['id'] ?>" class="btn btn-secondary btn-sm">
+                                            <a href="model.php?id=<?= $model['id'] ?>" class="btn btn-secondary btn-sm" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <form method="POST" style="display: inline;" 
+                                            <button type="button" class="btn btn-secondary btn-sm" title="Edit"
+                                                    onclick="editModel('<?= $model['id'] ?>', <?= htmlspecialchars(json_encode([
+                                                        'title' => $model['title'],
+                                                        'description' => $model['description'] ?? '',
+                                                        'category' => $model['category'] ?? '',
+                                                        'license' => $model['license'] ?? 'CC BY-NC',
+                                                        'tags' => $model['tags'] ?? []
+                                                    ]), ENT_QUOTES, 'UTF-8') ?>)">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <form method="POST" style="display: inline;"
                                                   onsubmit="return confirm('Delete this model?');">
                                                 <input type="hidden" name="action" value="delete_model">
                                                 <input type="hidden" name="id" value="<?= $model['id'] ?>">
-                                                <button type="submit" class="btn btn-danger btn-sm">
+                                                <button type="submit" class="btn btn-danger btn-sm" title="Delete">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
@@ -533,6 +569,62 @@ $faIcons = [
         </div>
     </div>
 
+    <!-- Edit Model Modal -->
+    <div class="modal-overlay" id="edit-model-modal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Edit Model</h2>
+                <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="edit-model-form" onsubmit="submitModelEdit(event)">
+                <input type="hidden" name="id" id="edit-model-id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label required">Title</label>
+                        <input type="text" name="title" id="edit-model-title" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" id="edit-model-description" class="form-textarea" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select name="category" id="edit-model-category" class="form-select">
+                            <option value="">Select Category</option>
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>"><?= sanitize($cat['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">License</label>
+                        <select name="license" id="edit-model-license" class="form-select">
+                            <option value="CC BY">CC BY (Attribution)</option>
+                            <option value="CC BY-SA">CC BY-SA (Attribution-ShareAlike)</option>
+                            <option value="CC BY-NC">CC BY-NC (Attribution-NonCommercial)</option>
+                            <option value="CC BY-NC-SA">CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)</option>
+                            <option value="CC0">CC0 (Public Domain)</option>
+                            <option value="MIT">MIT License</option>
+                            <option value="GPL">GPL License</option>
+                            <option value="All Rights Reserved">All Rights Reserved</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tags</label>
+                        <input type="text" name="tags" id="edit-model-tags" class="form-input" placeholder="Enter tags separated by commas">
+                        <div class="form-hint">Separate tags with commas (e.g., gaming, miniature, terrain)</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="Modal.hide('edit-model-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
@@ -550,6 +642,7 @@ $faIcons = [
 
     <script src="js/app.js"></script>
     <script>
+        // Category edit
         function editCategory(id, name, icon, description) {
             document.getElementById('edit-cat-id').value = id;
             document.getElementById('edit-cat-name').value = name;
@@ -557,6 +650,93 @@ $faIcons = [
             document.getElementById('edit-cat-desc').value = description;
             Modal.show('edit-category-modal');
         }
+
+        // Model edit
+        function editModel(id, data) {
+            document.getElementById('edit-model-id').value = id;
+            document.getElementById('edit-model-title').value = data.title || '';
+            document.getElementById('edit-model-description').value = data.description || '';
+            document.getElementById('edit-model-category').value = data.category || '';
+            document.getElementById('edit-model-license').value = data.license || 'CC BY-NC';
+            document.getElementById('edit-model-tags').value = (data.tags || []).join(', ');
+            Modal.show('edit-model-modal');
+        }
+
+        async function submitModelEdit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            formData.append('action', 'update_model');
+
+            // Convert tags string to JSON array
+            const tagsInput = formData.get('tags');
+            const tagsArray = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+            formData.set('tags', JSON.stringify(tagsArray));
+
+            try {
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    Toast.success('Model updated successfully!');
+                    Modal.hide('edit-model-modal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    Toast.error(result.error || 'Failed to update model');
+                }
+            } catch (err) {
+                Toast.error('Failed to update model');
+            }
+        }
+
+        // User search functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const userSearch = document.getElementById('user-search');
+            if (userSearch) {
+                userSearch.addEventListener('input', function() {
+                    const query = this.value.toLowerCase().trim();
+                    const rows = document.querySelectorAll('#users-table tbody tr');
+
+                    rows.forEach(row => {
+                        const username = row.dataset.username || '';
+                        const email = row.dataset.email || '';
+                        const matches = username.includes(query) || email.includes(query);
+                        row.style.display = matches ? '' : 'none';
+                    });
+                });
+            }
+
+            // Model search and filter functionality
+            const modelSearch = document.getElementById('model-search');
+            const categoryFilter = document.getElementById('model-category-filter');
+
+            function filterModels() {
+                const query = modelSearch ? modelSearch.value.toLowerCase().trim() : '';
+                const category = categoryFilter ? categoryFilter.value.toLowerCase() : '';
+                const rows = document.querySelectorAll('#models-table tbody tr');
+
+                rows.forEach(row => {
+                    const title = row.dataset.title || '';
+                    const author = row.dataset.author || '';
+                    const rowCategory = row.dataset.category || '';
+
+                    const matchesSearch = !query || title.includes(query) || author.includes(query);
+                    const matchesCategory = !category || rowCategory === category;
+
+                    row.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
+                });
+            }
+
+            if (modelSearch) {
+                modelSearch.addEventListener('input', filterModels);
+            }
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', filterModels);
+            }
+        });
     </script>
 </body>
 </html>
