@@ -238,39 +238,32 @@ if ($query) {
                     <?php endforeach; ?>
                 </div>
 
-                <!-- Infinite Scroll Sentinel & Loading -->
-                <div id="infinite-scroll-sentinel" class="infinite-scroll-sentinel" <?php if ($totalPages <= 1): ?>style="display: none;"<?php endif; ?>></div>
-                <div id="infinite-scroll-loading" class="infinite-scroll-loading" style="display: none;">
-                    <div class="loading-spinner"></div>
-                    <span>Loading more models...</span>
-                </div>
-
-                <!-- Fallback Pagination (for no-JS) -->
-                <noscript>
+                <!-- Pagination -->
                 <?php if ($totalPages > 1): ?>
                     <div class="pagination">
                         <?php if ($page > 1): ?>
-                            <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>">
-                                <i class="fas fa-chevron-left"></i>
+                            <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" class="pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
                             </a>
                         <?php endif; ?>
 
-                        <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
-                            <?php if ($i === $page): ?>
-                                <span class="active"><?= $i ?></span>
-                            <?php else: ?>
-                                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>"><?= $i ?></a>
-                            <?php endif; ?>
-                        <?php endfor; ?>
+                        <div class="pagination-numbers">
+                            <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+                                <?php if ($i === $page): ?>
+                                    <span class="pagination-number active"><?= $i ?></span>
+                                <?php else: ?>
+                                    <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" class="pagination-number"><?= $i ?></a>
+                                <?php endif; ?>
+                            <?php endfor; ?>
+                        </div>
 
                         <?php if ($page < $totalPages): ?>
-                            <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>">
-                                <i class="fas fa-chevron-right"></i>
+                            <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" class="pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
                             </a>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
-                </noscript>
             <?php endif; ?>
         </div>
     </div>
@@ -307,60 +300,6 @@ if ($query) {
             url.searchParams.delete('page'); // Reset to page 1
             window.location = url;
         }
-
-        // Initialize Infinite Scroll
-        document.addEventListener('DOMContentLoaded', function() {
-            const modelGrid = document.querySelector('.model-grid');
-            const sentinel = document.getElementById('infinite-scroll-sentinel');
-            const loadingIndicator = document.getElementById('infinite-scroll-loading');
-
-            if (!modelGrid || !sentinel) return;
-
-            // Get current filter params from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentParams = {
-                query: urlParams.get('q') || '',
-                category: urlParams.get('category') || '',
-                sort: urlParams.get('sort') || 'newest'
-            };
-
-            // Check if there are more pages to load
-            const totalPages = <?= $totalPages ?>;
-            const currentPage = <?= $page ?>;
-
-            if (totalPages <= 1) {
-                // No need for infinite scroll
-                return;
-            }
-
-            // Move sentinel inside the grid
-            modelGrid.appendChild(sentinel);
-
-            // Initialize infinite scroll starting from page 2
-            const infiniteScroll = new InfiniteScroll({
-                container: modelGrid,
-                sentinel: sentinel,
-                loadingIndicator: loadingIndicator,
-                endpoint: 'get_models',
-                params: currentParams,
-                limit: <?= $limit ?>,
-                threshold: '300px',
-                onRender: renderModelCard,
-                onError: function(error) {
-                    Toast.error('Failed to load more models: ' + error);
-                }
-            });
-
-            // Start from page 2 since page 1 is already rendered
-            infiniteScroll.page = 2;
-            infiniteScroll.totalLoaded = <?= count($models) ?>;
-
-            // If we're already past page 1 (user navigated with ?page=2), handle it
-            if (currentPage > 1) {
-                infiniteScroll.page = currentPage + 1;
-                infiniteScroll.totalLoaded = currentPage * <?= $limit ?>;
-            }
-        });
     </script>
 </body>
 </html>
