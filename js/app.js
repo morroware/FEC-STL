@@ -635,13 +635,22 @@ class ThumbnailViewer {
         const width = this.container.clientWidth;
         let height = this.container.clientHeight;
 
+        // Fallback sizing for mobile/edge cases
         if (!height && width) {
+            // Use 4:3 aspect ratio as fallback (matches .model-card-preview)
             const fallbackHeight = Math.round(width * 0.75);
             this.container.style.height = `${fallbackHeight}px`;
             height = this.container.clientHeight || fallbackHeight;
         }
 
-        return { width, height };
+        // Ensure minimum dimensions (prevent 0-size containers)
+        const minWidth = 100;
+        const minHeight = 75;
+
+        return {
+            width: Math.max(width, minWidth),
+            height: Math.max(height, minHeight)
+        };
     }
 
     deferInit() {
@@ -863,6 +872,106 @@ class ThumbnailViewer {
         // Show placeholder so it can be reloaded when scrolled back into view
         this.showPlaceholder();
     }
+}
+
+// ============================================================================
+// LAZY THUMBNAIL LOADER (IntersectionObserver)
+// ============================================================================
+
+/**
+ * Global lazy thumbnail loader
+ * Manages IntersectionObserver for all thumbnail viewers
+ */
+const LazyThumbnailManager = {
+    observer: null,
+    viewerMap: new Map(),
+    observedContainers: new Set(),
+
+    init() {
+        if (this.observer) return; // Already initialized
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '50px', // Start loading 50px before entering viewport
+            threshold: 0.01 // Trigger when at least 1% is visible
+        };
+
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const container = entry.target;
+                const url = container.dataset.stlThumb || container.dataset.modelThumb;
+
+                if (!url) return;
+
+                // When entering viewport - initialize viewer
+                if (entry.isIntersecting) {
+                    // Check if already initialized
+                    if (container.dataset.viewerInitialized === 'true') {
+                        return;
+                    }
+
+                    // Small delay to ensure container has dimensions
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            try {
+                                const viewer = new ThumbnailViewer(container, url);
+                                this.viewerMap.set(container, viewer);
+                            } catch (error) {
+                                console.error('Failed to initialize thumbnail viewer:', error);
+                                // Show placeholder on error
+                                container.innerHTML = `
+                                    <div class="model-placeholder">
+                                        <i class="fas fa-cube"></i>
+                                    </div>
+                                `;
+                            }
+                        });
+                    });
+                }
+            });
+        }, observerOptions);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            this.cleanup();
+        });
+    },
+
+    observeContainers() {
+        const thumbnailContainers = document.querySelectorAll('[data-stl-thumb], [data-model-thumb]');
+
+        thumbnailContainers.forEach(container => {
+            // Skip if already observed
+            if (this.observedContainers.has(container)) {
+                return;
+            }
+
+            this.observer.observe(container);
+            this.observedContainers.add(container);
+        });
+    },
+
+    cleanup() {
+        this.viewerMap.forEach(viewer => {
+            if (viewer && viewer.dispose) {
+                viewer.dispose();
+            }
+        });
+        this.viewerMap.clear();
+        if (this.observer) {
+            this.observer.disconnect();
+        }
+        this.observedContainers.clear();
+    }
+};
+
+/**
+ * Initialize or update lazy thumbnail loading
+ * Can be called multiple times safely (e.g., after dynamic content loads)
+ */
+function initLazyThumbnails() {
+    LazyThumbnailManager.init();
+    LazyThumbnailManager.observeContainers();
 }
 
 // ============================================================================
@@ -1287,13 +1396,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initialize thumbnail viewers (simple approach)
-    document.querySelectorAll('[data-stl-thumb], [data-model-thumb]').forEach(container => {
-        const url = container.dataset.stlThumb || container.dataset.modelThumb;
-        if (url) {
-            new ThumbnailViewer(container, url);
-        }
-    });
+    // Initialize thumbnail viewers with lazy loading (IntersectionObserver approach)
+    initLazyThumbnails();
 
     // Viewer controls
     document.querySelectorAll('[data-viewer-control]').forEach(btn => {
@@ -1462,13 +1566,9 @@ class InfiniteScroll {
     }
 
     initNewThumbnails() {
-        // Initialize any new thumbnail viewers
-        this.options.container.querySelectorAll('[data-model-thumb]').forEach(container => {
-            const url = container.dataset.modelThumb;
-            if (url && !container.dataset.viewerInitialized) {
-                new ThumbnailViewer(container, url);
-            }
-        });
+        // Re-run lazy thumbnail initialization for newly added items
+        // This will pick up any new thumbnails and set up observers for them
+        initLazyThumbnails();
     }
 
     onAllLoaded() {
@@ -1613,6 +1713,8 @@ function escapeHtml(text) {
 window.ModelViewer = ModelViewer;
 window.STLViewer = STLViewer;
 window.ThumbnailViewer = ThumbnailViewer;
+window.LazyThumbnailManager = LazyThumbnailManager;
+window.initLazyThumbnails = initLazyThumbnails;
 window.API = API;
 window.Toast = Toast;
 window.Modal = Modal;
