@@ -560,14 +560,17 @@ class ThumbnailViewer {
         this.container = container;
         this.url = url;
 
-        // Prevent double initialization - check both attribute and actual content
-        if (this.container.dataset.initialized === 'true' || this.container.querySelector('canvas')) {
+        // Prevent double initialization - check multiple indicators
+        if (this.container.dataset.initialized === 'true' ||
+            this.container.querySelector('canvas') ||
+            this.container._thumbnailViewer) {
             console.warn('ThumbnailViewer already initialized for', url);
             return;
         }
 
         // Mark as initialized immediately to prevent race conditions
         this.container.dataset.initialized = 'true';
+        this.container._thumbnailViewer = this;
 
         this.init();
     }
@@ -576,6 +579,7 @@ class ThumbnailViewer {
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
 
+        console.log('ThumbnailViewer.init() called for:', this.url);
         this.container.innerHTML = '';
 
         // Scene
@@ -615,13 +619,16 @@ class ThumbnailViewer {
 
     showPlaceholder() {
         // Show a styled placeholder when model fails to load
-        this.container.innerHTML = `
-            <div class="model-placeholder">
-                <i class="fas fa-cube"></i>
-                <span class="placeholder-format">${this.getFileExtension(this.url).toUpperCase()}</span>
-            </div>
-        `;
-        this.container.classList.add('placeholder-active');
+        // Only if there isn't already a canvas (working viewer)
+        if (!this.container.querySelector('canvas')) {
+            this.container.innerHTML = `
+                <div class="model-placeholder">
+                    <i class="fas fa-cube"></i>
+                    <span class="placeholder-format">${this.getFileExtension(this.url).toUpperCase()}</span>
+                </div>
+            `;
+            this.container.classList.add('placeholder-active');
+        }
     }
 
     getFileExtension(url) {
@@ -1163,7 +1170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = container.dataset.stlThumb || container.dataset.modelThumb;
         if (url) {
             new ThumbnailViewer(container, url);
-            container.dataset.initialized = 'true';
+            // Note: data-initialized is already set inside ThumbnailViewer constructor
         }
     });
 
