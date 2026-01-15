@@ -470,7 +470,9 @@ $faIcons = [
                                                         'description' => $model['description'] ?? '',
                                                         'category' => $model['category'] ?? '',
                                                         'license' => $model['license'] ?? 'CC BY-NC',
-                                                        'tags' => $model['tags'] ?? []
+                                                        'tags' => $model['tags'] ?? [],
+                                                        'primary_display' => $model['primary_display'] ?? 'auto',
+                                                        'has_photos' => !empty($model['photos'] ?? ($model['photo'] ? [$model['photo']] : []))
                                                     ]), ENT_QUOTES, 'UTF-8') ?>)">
                                                 <i class="fas fa-edit"></i>
                                             </button>
@@ -614,6 +616,15 @@ $faIcons = [
                         <input type="text" name="tags" id="edit-model-tags" class="form-input" placeholder="Enter tags separated by commas">
                         <div class="form-hint">Separate tags with commas (e.g., gaming, miniature, terrain)</div>
                     </div>
+                    <div class="form-group" id="primary-display-group">
+                        <label class="form-label">Default Display</label>
+                        <select name="primary_display" id="edit-model-primary-display" class="form-select">
+                            <option value="0">3D Model - Show 3D preview in listings</option>
+                            <option value="photo">Photo - Show photo in listings</option>
+                            <option value="auto">Auto - Photo if available, else 3D</option>
+                        </select>
+                        <div class="form-hint">Choose what to display as the cover image in browse/search results</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="Modal.hide('edit-model-modal')">Cancel</button>
@@ -659,6 +670,14 @@ $faIcons = [
             document.getElementById('edit-model-category').value = data.category || '';
             document.getElementById('edit-model-license').value = data.license || 'CC BY-NC';
             document.getElementById('edit-model-tags').value = (data.tags || []).join(', ');
+            document.getElementById('edit-model-primary-display').value = data.primary_display || '0';
+
+            // Show/hide photo option based on whether model has photos
+            const photoOption = document.querySelector('#edit-model-primary-display option[value="photo"]');
+            if (photoOption) {
+                photoOption.style.display = data.has_photos ? '' : 'none';
+            }
+
             Modal.show('edit-model-modal');
         }
 
