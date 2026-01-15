@@ -81,9 +81,6 @@ class ModelViewer {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(this.options.backgroundColor);
 
-        // Add fog for depth
-        this.scene.fog = new THREE.Fog(this.options.backgroundColor, 100, 500);
-
         // Camera
         this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
         this.camera.position.set(0, 0, 100);
@@ -134,16 +131,16 @@ class ModelViewer {
     }
 
     setupLighting() {
-        // Ambient light - softer overall illumination
-        const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+        // Ambient light - brighter for better visibility at all distances
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(ambient);
 
         // Hemisphere light for natural sky/ground lighting
-        const hemi = new THREE.HemisphereLight(0x00f0ff, 0xff00aa, 0.2);
+        const hemi = new THREE.HemisphereLight(0x00f0ff, 0xff00aa, 0.3);
         this.scene.add(hemi);
 
         // Key light (main light with shadows)
-        const keyLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
         keyLight.position.set(50, 100, 50);
         keyLight.castShadow = true;
         keyLight.shadow.mapSize.width = 2048;
