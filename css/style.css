@@ -3096,6 +3096,346 @@ kbd {
 }
 
 /* ============================================================================
+   UNIFIED GALLERY VIEWER
+   ============================================================================ */
+
+.unified-gallery {
+    position: relative;
+    background: var(--bg-dark);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    aspect-ratio: 16/10;
+}
+
+.gallery-slides {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.gallery-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--bg-dark), var(--bg-card));
+}
+
+.gallery-slide.active {
+    opacity: 1;
+    visibility: visible;
+    z-index: 1;
+}
+
+/* Photo slides */
+.gallery-photo {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gallery-photo img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+/* 3D viewer slides */
+.gallery-3d-viewer {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.gallery-3d-viewer canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Slide badge/type indicator */
+.gallery-slide-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 8px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+}
+
+.gallery-slide-badge.photo-badge-type {
+    background: rgba(255, 0, 170, 0.2);
+    border: 1px solid rgba(255, 0, 170, 0.4);
+    color: var(--neon-magenta);
+}
+
+.gallery-slide-badge.model-badge-type {
+    background: rgba(0, 240, 255, 0.2);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    color: var(--neon-cyan);
+}
+
+/* Navigation arrows */
+.gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 52px;
+    height: 52px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: all var(--transition-fast);
+    z-index: 20;
+    opacity: 0.7;
+}
+
+.gallery-nav:hover {
+    background: var(--bg-elevated);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+.gallery-nav-prev {
+    left: 16px;
+}
+
+.gallery-nav-next {
+    right: 16px;
+}
+
+/* Dot indicators */
+.gallery-dots {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    border-radius: 30px;
+    z-index: 20;
+}
+
+.gallery-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    padding: 0;
+}
+
+.gallery-dot:hover {
+    border-color: var(--text-primary);
+    transform: scale(1.2);
+}
+
+.gallery-dot.active {
+    transform: scale(1.2);
+}
+
+.gallery-dot.dot-photo {
+    border-color: var(--neon-magenta);
+}
+
+.gallery-dot.dot-photo.active {
+    background: var(--neon-magenta);
+    box-shadow: 0 0 10px rgba(255, 0, 170, 0.5);
+}
+
+.gallery-dot.dot-3d {
+    border-color: var(--neon-cyan);
+}
+
+.gallery-dot.dot-3d.active {
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+/* 3D controls for gallery */
+.gallery-3d-controls {
+    position: absolute;
+    bottom: 70px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+    z-index: 15;
+}
+
+/* Color picker positioning in gallery */
+.gallery-color-picker {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 15;
+}
+
+.gallery-color-picker .color-picker-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.gallery-color-picker .color-picker-btn:hover {
+    transform: scale(1.1);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+.gallery-color-picker .color-palette-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    min-width: 220px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+
+.gallery-color-picker .color-palette-panel.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Screenshot flash */
+.screenshot-flash {
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100;
+    transition: opacity 0.15s ease;
+}
+
+.screenshot-flash.active {
+    opacity: 0.8;
+}
+
+/* Hide color picker on photo slides */
+.unified-gallery[data-current-type="photo"] .gallery-color-picker {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Loading state for 3D viewers */
+.gallery-3d-viewer .viewer-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-dark);
+    gap: 16px;
+}
+
+.gallery-3d-viewer .viewer-loading::after {
+    content: 'Loading 3D Model...';
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    color: var(--neon-cyan);
+    letter-spacing: 0.05em;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Responsive gallery */
+@media (max-width: 768px) {
+    .gallery-nav {
+        width: 44px;
+        height: 44px;
+        font-size: 1rem;
+    }
+
+    .gallery-nav-prev {
+        left: 8px;
+    }
+
+    .gallery-nav-next {
+        right: 8px;
+    }
+
+    .gallery-dots {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    .gallery-dot {
+        width: 10px;
+        height: 10px;
+    }
+
+    .gallery-3d-controls {
+        bottom: 60px;
+        right: 8px;
+        gap: 6px;
+    }
+
+    .gallery-3d-controls .btn-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 0.85rem;
+    }
+
+    .gallery-slide-badge {
+        top: 8px;
+        right: 8px;
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+
+    .gallery-color-picker {
+        top: 8px;
+        left: 8px;
+    }
+
+    .gallery-color-picker .color-picker-btn {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* ============================================================================
    POLISH & MICRO-INTERACTIONS
    ============================================================================ */
 
