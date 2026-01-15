@@ -1405,11 +1405,73 @@ h4 { font-size: 1.25rem; }
 
 .pagination {
     display: flex;
+    align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-top: 40px;
+    gap: 12px;
+    margin-top: 48px;
+    margin-bottom: 24px;
 }
 
+.pagination-numbers {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pagination-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 14px;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.pagination-btn:hover {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    background: rgba(0, 240, 255, 0.05);
+    transform: translateY(-1px);
+}
+
+.pagination-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 14px;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.pagination-number:hover {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    background: rgba(0, 240, 255, 0.05);
+}
+
+.pagination-number.active {
+    background: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    color: var(--bg-dark);
+    font-weight: 600;
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+/* Legacy pagination styles for browse.php */
 .pagination a,
 .pagination span {
     display: flex;
