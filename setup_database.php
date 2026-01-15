@@ -392,6 +392,9 @@ CREATE TABLE IF NOT EXISTS users (
     avatar VARCHAR(255) NULL,
     bio TEXT NULL,
     location VARCHAR(255) NULL,
+    website VARCHAR(255) NULL,
+    twitter VARCHAR(100) NULL,
+    github VARCHAR(100) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     model_count INT DEFAULT 0,
     download_count INT DEFAULT 0,
@@ -497,6 +500,24 @@ if ($conn->multi_query($sql)) {
 } else {
     die("Error creating tables: " . $conn->error);
 }
+
+// Run migrations for existing databases (adds new columns if they don't exist)
+$migrations = [
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255) NULL AFTER location",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(100) NULL AFTER website",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS github VARCHAR(100) NULL AFTER twitter"
+];
+
+foreach ($migrations as $migration) {
+    if (!$conn->query($migration)) {
+        // Ignore errors if column already exists (for MySQL versions without IF NOT EXISTS support)
+        if (strpos($conn->error, 'Duplicate column') === false) {
+            // Log but don't fail - these are optional schema updates
+            error_log("Migration warning: " . $conn->error);
+        }
+    }
+}
+echo "✓ Schema migrations applied!\n\n";
 
 // Insert default categories
 $categories = [
