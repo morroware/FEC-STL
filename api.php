@@ -343,15 +343,43 @@ switch ($action) {
     case 'like_model':
         $id = $_POST['id'] ?? '';
         $model = getModel($id);
-        
+
         if (!$model) {
             jsonResponse(['success' => false, 'error' => 'Model not found'], 404);
         }
-        
+
+        // Track likes in session to prevent spam (allows one like per model per session)
+        if (!isset($_SESSION['liked_models'])) {
+            $_SESSION['liked_models'] = [];
+        }
+
+        if (in_array($id, $_SESSION['liked_models'])) {
+            jsonResponse([
+                'success' => false,
+                'error' => 'Already liked',
+                'likes' => $model['likes'] ?? 0,
+                'already_liked' => true
+            ]);
+            break;
+        }
+
+        // Record the like
+        $_SESSION['liked_models'][] = $id;
         incrementModelStat($id, 'likes');
-        jsonResponse(['success' => true, 'likes' => ($model['likes'] ?? 0) + 1]);
+
+        jsonResponse([
+            'success' => true,
+            'likes' => ($model['likes'] ?? 0) + 1,
+            'already_liked' => false
+        ]);
         break;
         
+    case 'check_liked':
+        $id = $_POST['id'] ?? $_GET['id'] ?? '';
+        $isLiked = isset($_SESSION['liked_models']) && in_array($id, $_SESSION['liked_models']);
+        jsonResponse(['success' => true, 'is_liked' => $isLiked]);
+        break;
+
     case 'favorite_model':
         if (!isLoggedIn()) {
             jsonResponse(['success' => false, 'error' => 'Please log in'], 401);
@@ -484,27 +512,80 @@ switch ($action) {
         if (!isLoggedIn()) {
             jsonResponse(['success' => false, 'error' => 'Unauthorized'], 401);
         }
-        
+
         $id = $_POST['id'] ?? '';
-        
+
         // Check ownership or admin
         if ($id !== $_SESSION['user_id'] && !isAdmin()) {
             jsonResponse(['success' => false, 'error' => 'Unauthorized'], 403);
         }
-        
+
         $data = [];
         if (isset($_POST['bio'])) $data['bio'] = $_POST['bio'];
         if (isset($_POST['location'])) $data['location'] = $_POST['location'];
-        
+        if (isset($_POST['website'])) $data['website'] = $_POST['website'];
+        if (isset($_POST['twitter'])) $data['twitter'] = $_POST['twitter'];
+        if (isset($_POST['github'])) $data['github'] = $_POST['github'];
+
         // Admin-only fields
         if (isAdmin()) {
             if (isset($_POST['is_admin'])) $data['is_admin'] = $_POST['is_admin'] === 'true';
         }
-        
+
         if (updateUser($id, $data)) {
             jsonResponse(['success' => true]);
         } else {
             jsonResponse(['success' => false, 'error' => 'Failed to update'], 500);
+        }
+        break;
+
+    case 'upload_avatar':
+        if (!isLoggedIn()) {
+            jsonResponse(['success' => false, 'error' => 'Please log in'], 401);
+        }
+
+        $userId = $_SESSION['user_id'];
+
+        if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+            jsonResponse(['success' => false, 'error' => 'No file uploaded'], 400);
+        }
+
+        $file = $_FILES['avatar'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        if (!in_array($ext, $allowedExtensions, true)) {
+            jsonResponse(['success' => false, 'error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WebP'], 400);
+        }
+
+        // Max 2MB for avatar
+        if ($file['size'] > 2 * 1024 * 1024) {
+            jsonResponse(['success' => false, 'error' => 'File too large (max 2MB)'], 400);
+        }
+
+        // Generate unique filename
+        $filename = 'avatar_' . $userId . '_' . time() . '.' . $ext;
+        $filepath = UPLOADS_DIR . $filename;
+
+        // Delete old avatar if exists
+        $user = getUser($userId);
+        if (!empty($user['avatar'])) {
+            $oldAvatar = UPLOADS_DIR . $user['avatar'];
+            if (file_exists($oldAvatar)) {
+                unlink($oldAvatar);
+            }
+        }
+
+        if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+            jsonResponse(['success' => false, 'error' => 'Failed to save file'], 500);
+        }
+
+        // Update user record
+        if (updateUser($userId, ['avatar' => $filename])) {
+            jsonResponse(['success' => true, 'avatar' => $filename]);
+        } else {
+            unlink($filepath);
+            jsonResponse(['success' => false, 'error' => 'Failed to update profile'], 500);
         }
         break;
         

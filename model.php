@@ -29,6 +29,9 @@ if (isLoggedIn()) {
     $isFavorited = in_array($modelId, $currentUser['favorites'] ?? []);
 }
 
+// Check if liked (session-based)
+$isLiked = isset($_SESSION['liked_models']) && in_array($modelId, $_SESSION['liked_models']);
+
 // Get related models (same category)
 $relatedModels = array_slice(array_filter(
     searchModels('', $model['category'], 'popular'),
@@ -74,8 +77,13 @@ foreach ($relatedModels as $index => $rm) {
                     <a href="upload.php" class="btn btn-primary btn-sm">
                         <i class="fas fa-upload"></i> Upload
                     </a>
-                    <a href="profile.php?id=<?= $user['id'] ?>" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-user"></i> <?= sanitize($user['username']) ?>
+                    <a href="profile.php?id=<?= $user['id'] ?>" class="nav-user-btn">
+                        <?php if (!empty($user['avatar'])): ?>
+                            <img src="uploads/<?= sanitize($user['avatar']) ?>" alt="<?= sanitize($user['username']) ?>" class="nav-avatar">
+                        <?php else: ?>
+                            <div class="nav-avatar-placeholder"><?= strtoupper(substr($user['username'], 0, 1)) ?></div>
+                        <?php endif; ?>
+                        <span><?= sanitize($user['username']) ?></span>
                     </a>
                     <?php if (isAdmin()): ?>
                         <a href="admin.php" class="btn btn-outline btn-sm">
@@ -396,7 +404,7 @@ foreach ($relatedModels as $index => $rm) {
                         </button>
                         <?php endif; ?>
                         <div style="display: flex; gap: 12px; margin-top: 12px;">
-                            <button class="btn btn-secondary" onclick="likeModel('<?= $modelId ?>')" id="like-btn" style="flex: 1;">
+                            <button class="btn btn-secondary <?= $isLiked ? 'liked' : '' ?>" onclick="likeModel('<?= $modelId ?>')" id="like-btn" style="flex: 1;" <?= $isLiked ? 'disabled' : '' ?>>
                                 <i class="fas fa-heart"></i>
                                 <span id="like-count"><?= $model['likes'] ?? 0 ?></span>
                             </button>
@@ -459,19 +467,31 @@ foreach ($relatedModels as $index => $rm) {
                     
                     <div class="model-grid">
                         <?php foreach ($relatedModels as $rm): ?>
+                            <?php
+                            $rmPhotos = $rm['photos'] ?? ($rm['photo'] ? [$rm['photo']] : []);
+                            $rmHasPhotos = !empty($rmPhotos);
+                            $rmPrimaryDisplay = $rm['primary_display'] ?? 'auto';
+                            $rmShowPhoto = ($rmPrimaryDisplay === 'photo' || $rmPrimaryDisplay === 'auto') && $rmHasPhotos;
+                            ?>
                             <div class="card model-card">
-                                <div class="model-card-preview">
+                                <a href="model.php?id=<?= $rm['id'] ?>" class="model-card-preview <?= $rmShowPhoto ? 'has-photo' : '' ?>" style="display: block; cursor: pointer;">
+                                    <?php if ($rmShowPhoto): ?>
+                                    <div class="preview-photo">
+                                        <img src="uploads/<?= sanitize($rmPhotos[0]) ?>" alt="<?= sanitize($rm['title']) ?>">
+                                    </div>
+                                    <?php else: ?>
                                     <div class="preview-placeholder">
                                         <i class="fas fa-cube"></i>
                                     </div>
+                                    <?php endif; ?>
                                     <div class="model-card-overlay">
                                         <div class="model-card-actions">
-                                            <a href="model.php?id=<?= $rm['id'] ?>" class="btn btn-primary btn-sm">
+                                            <span class="btn btn-primary btn-sm">
                                                 <i class="fas fa-eye"></i> View
-                                            </a>
+                                            </span>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                                 <div class="model-card-body">
                                     <h3 class="model-card-title">
                                         <a href="model.php?id=<?= $rm['id'] ?>"><?= sanitize($rm['title']) ?></a>
@@ -480,7 +500,7 @@ foreach ($relatedModels as $index => $rm) {
                                         <div class="author-avatar">
                                             <?= strtoupper(substr($rm['author'], 0, 1)) ?>
                                         </div>
-                                        <span><?= sanitize($rm['author']) ?></span>
+                                        <a href="profile.php?id=<?= $rm['user_id'] ?>"><?= sanitize($rm['author']) ?></a>
                                     </div>
                                     <div class="model-card-meta">
                                         <span><i class="fas fa-download"></i> <?= $rm['downloads'] ?? 0 ?></span>
@@ -914,17 +934,37 @@ foreach ($relatedModels as $index => $rm) {
         }
 
         async function likeModel(id) {
+            const btn = document.getElementById('like-btn');
+
+            // Check if already liked via localStorage backup
+            const likedModels = JSON.parse(localStorage.getItem('liked_models') || '[]');
+            if (likedModels.includes(id)) {
+                Toast.info('You already liked this model');
+                return;
+            }
+
             try {
-                const btn = document.getElementById('like-btn');
                 btn.classList.add('liked');
+                btn.disabled = true;
                 const response = await API.likeModel(id);
+
                 if (response.success) {
                     document.getElementById('like-count').textContent = response.likes;
+                    // Store in localStorage as backup
+                    likedModels.push(id);
+                    localStorage.setItem('liked_models', JSON.stringify(likedModels));
                     Toast.success('Thanks for the like!');
+                } else if (response.already_liked) {
+                    Toast.info('You already liked this model');
+                } else {
+                    Toast.error(response.error || 'Failed to like');
+                    btn.classList.remove('liked');
+                    btn.disabled = false;
                 }
             } catch (err) {
                 Toast.error('Failed to like');
-                document.getElementById('like-btn').classList.remove('liked');
+                btn.classList.remove('liked');
+                btn.disabled = false;
             }
         }
 

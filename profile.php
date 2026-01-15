@@ -27,10 +27,16 @@ $success = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnProfile) {
     $bio = $_POST['bio'] ?? '';
     $location = $_POST['location'] ?? '';
-    
+    $website = $_POST['website'] ?? '';
+    $twitter = preg_replace('/^@/', '', $_POST['twitter'] ?? '');
+    $github = preg_replace('/^@/', '', $_POST['github'] ?? '');
+
     if (updateUser($userId, [
         'bio' => $bio,
-        'location' => $location
+        'location' => $location,
+        'website' => $website,
+        'twitter' => $twitter,
+        'github' => $github
     ])) {
         $success = 'Profile updated successfully';
         $profileUser = getUser($userId); // Refresh
@@ -87,8 +93,13 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                     <a href="upload.php" class="btn btn-primary btn-sm">
                         <i class="fas fa-upload"></i> Upload
                     </a>
-                    <a href="profile.php?id=<?= $currentUser['id'] ?>" class="btn btn-secondary btn-sm <?= $isOwnProfile ? 'active' : '' ?>">
-                        <i class="fas fa-user"></i> <?= sanitize($currentUser['username']) ?>
+                    <a href="profile.php?id=<?= $currentUser['id'] ?>" class="nav-user-btn <?= $isOwnProfile ? 'active' : '' ?>">
+                        <?php if (!empty($currentUser['avatar'])): ?>
+                            <img src="uploads/<?= sanitize($currentUser['avatar']) ?>" alt="<?= sanitize($currentUser['username']) ?>" class="nav-avatar">
+                        <?php else: ?>
+                            <div class="nav-avatar-placeholder"><?= strtoupper(substr($currentUser['username'], 0, 1)) ?></div>
+                        <?php endif; ?>
+                        <span><?= sanitize($currentUser['username']) ?></span>
                     </a>
                     <?php if (isAdmin()): ?>
                         <a href="admin.php" class="btn btn-outline btn-sm">
@@ -107,8 +118,19 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
         <div class="container">
             <!-- Profile Header -->
             <div class="profile-header">
-                <div class="profile-avatar">
-                    <?= strtoupper(substr($profileUser['username'], 0, 1)) ?>
+                <div class="profile-avatar-wrapper">
+                    <?php if (!empty($profileUser['avatar'])): ?>
+                        <img src="uploads/<?= sanitize($profileUser['avatar']) ?>" alt="<?= sanitize($profileUser['username']) ?>" class="profile-avatar-img">
+                    <?php else: ?>
+                        <div class="profile-avatar">
+                            <?= strtoupper(substr($profileUser['username'], 0, 1)) ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($isOwnProfile): ?>
+                        <button class="avatar-edit-btn" onclick="Modal.show('avatar-modal')" title="Change avatar">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    <?php endif; ?>
                 </div>
                 <div class="profile-info">
                     <h1>
@@ -120,14 +142,33 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                         <?php endif; ?>
                     </h1>
                     <?php if (!empty($profileUser['bio'])): ?>
-                        <p><?= sanitize($profileUser['bio']) ?></p>
+                        <p class="profile-bio"><?= nl2br(sanitize($profileUser['bio'])) ?></p>
                     <?php endif; ?>
-                    <div style="display: flex; gap: 16px; margin-top: 8px; color: var(--text-muted); font-size: 0.9rem;">
+                    <div class="profile-meta">
                         <?php if (!empty($profileUser['location'])): ?>
                             <span><i class="fas fa-map-marker-alt"></i> <?= sanitize($profileUser['location']) ?></span>
                         <?php endif; ?>
+                        <?php if (!empty($profileUser['website'])): ?>
+                            <a href="<?= sanitize($profileUser['website']) ?>" target="_blank" rel="noopener">
+                                <i class="fas fa-globe"></i> Website
+                            </a>
+                        <?php endif; ?>
                         <span><i class="fas fa-calendar"></i> Joined <?= date('M Y', strtotime($profileUser['created_at'])) ?></span>
                     </div>
+                    <?php if (!empty($profileUser['twitter']) || !empty($profileUser['github'])): ?>
+                    <div class="profile-social">
+                        <?php if (!empty($profileUser['twitter'])): ?>
+                            <a href="https://twitter.com/<?= sanitize($profileUser['twitter']) ?>" target="_blank" rel="noopener" class="social-link twitter">
+                                <i class="fab fa-twitter"></i>
+                            </a>
+                        <?php endif; ?>
+                        <?php if (!empty($profileUser['github'])): ?>
+                            <a href="https://github.com/<?= sanitize($profileUser['github']) ?>" target="_blank" rel="noopener" class="social-link github">
+                                <i class="fab fa-github"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <div class="profile-stats">
                     <div class="model-stat">
@@ -203,20 +244,32 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                 <?php else: ?>
                     <div class="model-grid">
                         <?php foreach ($userModels as $model): ?>
-                            <?php $category = getCategory($model['category']); ?>
+                            <?php
+                            $category = getCategory($model['category']);
+                            $photos = $model['photos'] ?? ($model['photo'] ? [$model['photo']] : []);
+                            $hasPhotos = !empty($photos);
+                            $primaryDisplay = $model['primary_display'] ?? 'auto';
+                            $showPhoto = ($primaryDisplay === 'photo' || $primaryDisplay === 'auto') && $hasPhotos;
+                            ?>
                             <div class="card model-card">
-                                <div class="model-card-preview">
+                                <a href="model.php?id=<?= $model['id'] ?>" class="model-card-preview <?= $showPhoto ? 'has-photo' : '' ?>" style="display: block; cursor: pointer;">
+                                    <?php if ($showPhoto): ?>
+                                    <div class="preview-photo">
+                                        <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($model['title']) ?>">
+                                    </div>
+                                    <?php else: ?>
                                     <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($model['filename']) ?>">
                                         <i class="fas fa-cube"></i>
                                     </div>
+                                    <?php endif; ?>
                                     <div class="model-card-overlay">
                                         <div class="model-card-actions">
-                                            <a href="model.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-sm">
+                                            <span class="btn btn-primary btn-sm">
                                                 <i class="fas fa-eye"></i> View
-                                            </a>
+                                            </span>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                                 <div class="model-card-body">
                                     <?php if ($category): ?>
                                         <span class="model-card-category">
@@ -254,20 +307,32 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                     <?php else: ?>
                         <div class="model-grid">
                             <?php foreach ($favorites as $model): ?>
-                                <?php $category = getCategory($model['category']); ?>
+                                <?php
+                                $category = getCategory($model['category']);
+                                $photos = $model['photos'] ?? ($model['photo'] ? [$model['photo']] : []);
+                                $hasPhotos = !empty($photos);
+                                $primaryDisplay = $model['primary_display'] ?? 'auto';
+                                $showPhoto = ($primaryDisplay === 'photo' || $primaryDisplay === 'auto') && $hasPhotos;
+                                ?>
                                 <div class="card model-card">
-                                    <div class="model-card-preview">
+                                    <a href="model.php?id=<?= $model['id'] ?>" class="model-card-preview <?= $showPhoto ? 'has-photo' : '' ?>" style="display: block; cursor: pointer;">
+                                        <?php if ($showPhoto): ?>
+                                        <div class="preview-photo">
+                                            <img src="uploads/<?= sanitize($photos[0]) ?>" alt="<?= sanitize($model['title']) ?>">
+                                        </div>
+                                        <?php else: ?>
                                         <div class="preview-placeholder" data-model-thumb="uploads/<?= sanitize($model['filename']) ?>">
                                             <i class="fas fa-cube"></i>
                                         </div>
+                                        <?php endif; ?>
                                         <div class="model-card-overlay">
                                             <div class="model-card-actions">
-                                                <a href="model.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-sm">
+                                                <span class="btn btn-primary btn-sm">
                                                     <i class="fas fa-eye"></i> View
-                                                </a>
+                                                </span>
                                             </div>
                                         </div>
-                                    </div>
+                                    </a>
                                     <div class="model-card-body">
                                         <?php if ($category): ?>
                                             <span class="model-card-category">
@@ -282,7 +347,7 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                                             <div class="author-avatar">
                                                 <?= strtoupper(substr($model['author'], 0, 1)) ?>
                                             </div>
-                                            <span><?= sanitize($model['author']) ?></span>
+                                            <a href="profile.php?id=<?= $model['user_id'] ?>"><?= sanitize($model['author']) ?></a>
                                         </div>
                                         <div class="model-card-meta">
                                             <span><i class="fas fa-download"></i> <?= $model['downloads'] ?? 0 ?></span>
@@ -301,30 +366,96 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
     <!-- Edit Profile Modal -->
     <?php if ($isOwnProfile): ?>
         <div class="modal-overlay" id="edit-profile-modal">
-            <div class="modal">
+            <div class="modal modal-lg">
                 <div class="modal-header">
-                    <h2>Edit Profile</h2>
-                    <button class="modal-close"><i class="fas fa-times"></i></button>
+                    <h2><i class="fas fa-user-edit"></i> Edit Profile</h2>
+                    <button class="modal-close" onclick="Modal.hide('edit-profile-modal')"><i class="fas fa-times"></i></button>
                 </div>
                 <form method="POST" action="profile.php?id=<?= $userId ?>">
                     <div class="modal-body">
                         <div class="form-group">
-                            <label class="form-label">Bio</label>
-                            <textarea name="bio" class="form-textarea" rows="3" 
-                                      placeholder="Tell us about yourself..."><?= sanitize($profileUser['bio'] ?? '') ?></textarea>
+                            <label class="form-label">About Me</label>
+                            <textarea name="bio" class="form-textarea" rows="4"
+                                      placeholder="Tell us about yourself, your interests, what kind of models you create..."><?= sanitize($profileUser['bio'] ?? '') ?></textarea>
+                            <small class="form-hint">Share your background, interests, or what inspires your 3D printing projects.</small>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Location</label>
-                            <input type="text" name="location" class="form-input" 
-                                   placeholder="City, State or Country"
-                                   value="<?= sanitize($profileUser['location'] ?? '') ?>">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label"><i class="fas fa-map-marker-alt"></i> Location</label>
+                                <input type="text" name="location" class="form-input"
+                                       placeholder="City, State or Country"
+                                       value="<?= sanitize($profileUser['location'] ?? '') ?>">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><i class="fas fa-globe"></i> Website</label>
+                                <input type="url" name="website" class="form-input"
+                                       placeholder="https://yoursite.com"
+                                       value="<?= sanitize($profileUser['website'] ?? '') ?>">
+                            </div>
+                        </div>
+                        <div class="form-divider">
+                            <span>Social Links</span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label"><i class="fab fa-twitter"></i> Twitter</label>
+                                <div class="input-with-prefix">
+                                    <span class="input-prefix">@</span>
+                                    <input type="text" name="twitter" class="form-input"
+                                           placeholder="username"
+                                           value="<?= sanitize($profileUser['twitter'] ?? '') ?>">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><i class="fab fa-github"></i> GitHub</label>
+                                <div class="input-with-prefix">
+                                    <span class="input-prefix">@</span>
+                                    <input type="text" name="github" class="form-input"
+                                           placeholder="username"
+                                           value="<?= sanitize($profileUser['github'] ?? '') ?>">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="Modal.hide('edit-profile-modal')">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Avatar Upload Modal -->
+        <div class="modal-overlay" id="avatar-modal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2><i class="fas fa-camera"></i> Change Profile Picture</h2>
+                    <button class="modal-close" onclick="Modal.hide('avatar-modal')"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="avatar-upload-area" id="avatar-upload-area">
+                        <div class="avatar-preview" id="avatar-preview">
+                            <?php if (!empty($profileUser['avatar'])): ?>
+                                <img src="uploads/<?= sanitize($profileUser['avatar']) ?>" alt="Current avatar" id="avatar-preview-img">
+                            <?php else: ?>
+                                <div class="avatar-placeholder">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="avatar-upload-info">
+                            <p>Click or drag to upload a new profile picture</p>
+                            <small>JPG, PNG, GIF or WebP. Max 2MB.</small>
+                        </div>
+                        <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="Modal.hide('avatar-modal')">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="upload-avatar-btn" disabled>
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
+                </div>
             </div>
         </div>
     <?php endif; ?>
@@ -355,16 +486,130 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
             document.getElementById('models-tab').style.display = 'none';
             const favTab = document.getElementById('favorites-tab');
             if (favTab) favTab.style.display = 'none';
-            
+
             // Remove active class from all tab buttons
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            
+
             // Show selected tab
             document.getElementById(tab + '-tab').style.display = 'block';
-            
+
             // Add active class to clicked tab
             event.target.closest('.auth-tab').classList.add('active');
         }
+
+        <?php if ($isOwnProfile): ?>
+        // Avatar upload functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const avatarUploadArea = document.getElementById('avatar-upload-area');
+            const avatarInput = document.getElementById('avatar-input');
+            const avatarPreview = document.getElementById('avatar-preview');
+            const uploadBtn = document.getElementById('upload-avatar-btn');
+            let selectedFile = null;
+
+            if (avatarUploadArea && avatarInput) {
+                // Click to select file
+                avatarUploadArea.addEventListener('click', () => avatarInput.click());
+
+                // Drag and drop
+                avatarUploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    avatarUploadArea.classList.add('dragover');
+                });
+
+                avatarUploadArea.addEventListener('dragleave', () => {
+                    avatarUploadArea.classList.remove('dragover');
+                });
+
+                avatarUploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    avatarUploadArea.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        handleFileSelect(files[0]);
+                    }
+                });
+
+                // File input change
+                avatarInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFileSelect(e.target.files[0]);
+                    }
+                });
+
+                function handleFileSelect(file) {
+                    // Validate file type
+                    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                    if (!validTypes.includes(file.type)) {
+                        Toast.error('Invalid file type. Please use JPG, PNG, GIF, or WebP.');
+                        return;
+                    }
+
+                    // Validate file size (2MB max)
+                    if (file.size > 2 * 1024 * 1024) {
+                        Toast.error('File too large. Maximum size is 2MB.');
+                        return;
+                    }
+
+                    selectedFile = file;
+
+                    // Preview the image
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        avatarPreview.innerHTML = `<img src="${e.target.result}" alt="Preview" id="avatar-preview-img">`;
+                    };
+                    reader.readAsDataURL(file);
+
+                    // Enable upload button
+                    uploadBtn.disabled = false;
+                }
+
+                // Upload button click
+                uploadBtn.addEventListener('click', async () => {
+                    if (!selectedFile) return;
+
+                    uploadBtn.disabled = true;
+                    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+                    const formData = new FormData();
+                    formData.append('action', 'upload_avatar');
+                    formData.append('avatar', selectedFile);
+
+                    try {
+                        const response = await fetch('api.php', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            Toast.success('Profile picture updated!');
+                            // Update avatar on page
+                            const avatarWrapper = document.querySelector('.profile-avatar-wrapper');
+                            if (avatarWrapper) {
+                                const existingAvatar = avatarWrapper.querySelector('.profile-avatar');
+                                const existingImg = avatarWrapper.querySelector('.profile-avatar-img');
+                                if (existingAvatar) existingAvatar.remove();
+                                if (existingImg) existingImg.remove();
+                                const newImg = document.createElement('img');
+                                newImg.src = 'uploads/' + data.avatar;
+                                newImg.alt = 'Avatar';
+                                newImg.className = 'profile-avatar-img';
+                                avatarWrapper.insertBefore(newImg, avatarWrapper.firstChild);
+                            }
+                            Modal.hide('avatar-modal');
+                        } else {
+                            Toast.error(data.error || 'Upload failed');
+                        }
+                    } catch (err) {
+                        Toast.error('Upload failed. Please try again.');
+                    } finally {
+                        uploadBtn.disabled = false;
+                        uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload';
+                    }
+                });
+            }
+        });
+        <?php endif; ?>
     </script>
 </body>
 </html>

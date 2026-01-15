@@ -207,8 +207,13 @@ $user = getCurrentUser();
                 <a href="upload.php" class="btn btn-primary btn-sm active">
                     <i class="fas fa-upload"></i> Upload
                 </a>
-                <a href="profile.php?id=<?= $user['id'] ?>" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-user"></i> <?= sanitize($user['username']) ?>
+                <a href="profile.php?id=<?= $user['id'] ?>" class="nav-user-btn">
+                    <?php if (!empty($user['avatar'])): ?>
+                        <img src="uploads/<?= sanitize($user['avatar']) ?>" alt="<?= sanitize($user['username']) ?>" class="nav-avatar">
+                    <?php else: ?>
+                        <div class="nav-avatar-placeholder"><?= strtoupper(substr($user['username'], 0, 1)) ?></div>
+                    <?php endif; ?>
+                    <span><?= sanitize($user['username']) ?></span>
                 </a>
                 <?php if (isAdmin()): ?>
                     <a href="admin.php" class="btn btn-outline btn-sm">

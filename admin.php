@@ -161,8 +161,13 @@ $faIcons = [
                 <a href="upload.php" class="btn btn-primary btn-sm">
                     <i class="fas fa-upload"></i> Upload
                 </a>
-                <a href="profile.php?id=<?= $currentUser['id'] ?>" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-user"></i> <?= sanitize($currentUser['username']) ?>
+                <a href="profile.php?id=<?= $currentUser['id'] ?>" class="nav-user-btn">
+                    <?php if (!empty($currentUser['avatar'])): ?>
+                        <img src="uploads/<?= sanitize($currentUser['avatar']) ?>" alt="<?= sanitize($currentUser['username']) ?>" class="nav-avatar">
+                    <?php else: ?>
+                        <div class="nav-avatar-placeholder"><?= strtoupper(substr($currentUser['username'], 0, 1)) ?></div>
+                    <?php endif; ?>
+                    <span><?= sanitize($currentUser['username']) ?></span>
                 </a>
                 <a href="admin.php" class="btn btn-outline btn-sm active">
                     <i class="fas fa-cog"></i>
