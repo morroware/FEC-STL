@@ -285,6 +285,24 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                                         <span><i class="fas fa-heart"></i> <?= $model['likes'] ?? 0 ?></span>
                                         <span><i class="fas fa-clock"></i> <?= timeAgo($model['created_at']) ?></span>
                                     </div>
+                                    <?php if ($isOwnProfile): ?>
+                                    <div class="model-card-actions-owner" style="display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                                        <button class="btn btn-secondary btn-sm" style="flex: 1;"
+                                                onclick="editModelFromProfile('<?= $model['id'] ?>', <?= htmlspecialchars(json_encode([
+                                                    'title' => $model['title'],
+                                                    'description' => $model['description'] ?? '',
+                                                    'category' => $model['category'] ?? '',
+                                                    'license' => $model['license'] ?? 'CC BY-NC',
+                                                    'tags' => $model['tags'] ?? []
+                                                ]), ENT_QUOTES, 'UTF-8') ?>)">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" style="flex: 1;"
+                                                onclick="deleteModelFromProfile('<?= $model['id'] ?>')">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -425,6 +443,63 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
             </div>
         </div>
 
+        <!-- Edit Model Modal -->
+        <?php $allCategories = getCategories(); ?>
+        <div class="modal-overlay" id="edit-model-modal">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2>Edit Model</h2>
+                    <button class="modal-close"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="edit-model-form" onsubmit="submitModelEditFromProfile(event)">
+                    <input type="hidden" name="id" id="edit-model-id">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label required">Title</label>
+                            <input type="text" name="title" id="edit-model-title" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" id="edit-model-description" class="form-textarea" rows="4"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select name="category" id="edit-model-category" class="form-select">
+                                <option value="">Select Category</option>
+                                <?php foreach ($allCategories as $cat): ?>
+                                    <option value="<?= $cat['id'] ?>"><?= sanitize($cat['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">License</label>
+                            <select name="license" id="edit-model-license" class="form-select">
+                                <option value="CC BY">CC BY (Attribution)</option>
+                                <option value="CC BY-SA">CC BY-SA (Attribution-ShareAlike)</option>
+                                <option value="CC BY-NC">CC BY-NC (Attribution-NonCommercial)</option>
+                                <option value="CC BY-NC-SA">CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)</option>
+                                <option value="CC0">CC0 (Public Domain)</option>
+                                <option value="MIT">MIT License</option>
+                                <option value="GPL">GPL License</option>
+                                <option value="All Rights Reserved">All Rights Reserved</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tags</label>
+                            <input type="text" name="tags" id="edit-model-tags" class="form-input" placeholder="Enter tags separated by commas">
+                            <div class="form-hint">Separate tags with commas (e.g., gaming, miniature, terrain)</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="Modal.hide('edit-model-modal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Avatar Upload Modal -->
         <div class="modal-overlay" id="avatar-modal">
             <div class="modal">
@@ -498,6 +573,74 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
         }
 
         <?php if ($isOwnProfile): ?>
+        // Model edit/delete functions
+        function editModelFromProfile(id, data) {
+            document.getElementById('edit-model-id').value = id;
+            document.getElementById('edit-model-title').value = data.title || '';
+            document.getElementById('edit-model-description').value = data.description || '';
+            document.getElementById('edit-model-category').value = data.category || '';
+            document.getElementById('edit-model-license').value = data.license || 'CC BY-NC';
+            document.getElementById('edit-model-tags').value = (data.tags || []).join(', ');
+            Modal.show('edit-model-modal');
+        }
+
+        async function submitModelEditFromProfile(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            formData.append('action', 'update_model');
+
+            // Convert tags string to JSON array
+            const tagsInput = formData.get('tags');
+            const tagsArray = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+            formData.set('tags', JSON.stringify(tagsArray));
+
+            try {
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    Toast.success('Model updated successfully!');
+                    Modal.hide('edit-model-modal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    Toast.error(result.error || 'Failed to update model');
+                }
+            } catch (err) {
+                Toast.error('Failed to update model');
+            }
+        }
+
+        async function deleteModelFromProfile(id) {
+            if (!confirm('Are you sure you want to delete this model? This cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'delete_model');
+                formData.append('id', id);
+
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    Toast.success('Model deleted successfully!');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    Toast.error(result.error || 'Failed to delete model');
+                }
+            } catch (err) {
+                Toast.error('Failed to delete model');
+            }
+        }
+
         // Avatar upload functionality
         document.addEventListener('DOMContentLoaded', () => {
             const avatarUploadArea = document.getElementById('avatar-upload-area');

@@ -455,6 +455,9 @@ foreach ($relatedModels as $index => $rm) {
                     <!-- Owner Actions -->
                     <?php if (isLoggedIn() && ($model['user_id'] === $_SESSION['user_id'] || isAdmin())): ?>
                         <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                            <button class="btn btn-secondary btn-sm" onclick="openEditModal()" style="width: 100%; margin-bottom: 10px;">
+                                <i class="fas fa-edit"></i> Edit Model
+                            </button>
                             <button class="btn btn-danger btn-sm" onclick="deleteModel('<?= $modelId ?>')" style="width: 100%;">
                                 <i class="fas fa-trash"></i> Delete Model
                             </button>
@@ -522,6 +525,79 @@ foreach ($relatedModels as $index => $rm) {
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Edit Model Modal -->
+    <?php if (isLoggedIn() && ($model['user_id'] === $_SESSION['user_id'] || isAdmin())): ?>
+    <?php $allCategories = getCategories(); ?>
+    <div class="modal-overlay" id="edit-model-modal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Edit Model</h2>
+                <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="edit-model-form" onsubmit="submitModelEdit(event)">
+                <input type="hidden" name="id" value="<?= $modelId ?>">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label required">Title</label>
+                        <input type="text" name="title" id="edit-model-title" class="form-input" required
+                               value="<?= sanitize($model['title']) ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" id="edit-model-description" class="form-textarea" rows="4"><?= sanitize($model['description'] ?? '') ?></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select name="category" id="edit-model-category" class="form-select">
+                            <option value="">Select Category</option>
+                            <?php foreach ($allCategories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>" <?= ($model['category'] ?? '') === $cat['id'] ? 'selected' : '' ?>>
+                                    <?= sanitize($cat['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">License</label>
+                        <select name="license" id="edit-model-license" class="form-select">
+                            <?php
+                            $licenses = [
+                                'CC BY' => 'CC BY (Attribution)',
+                                'CC BY-SA' => 'CC BY-SA (Attribution-ShareAlike)',
+                                'CC BY-NC' => 'CC BY-NC (Attribution-NonCommercial)',
+                                'CC BY-NC-SA' => 'CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)',
+                                'CC0' => 'CC0 (Public Domain)',
+                                'MIT' => 'MIT License',
+                                'GPL' => 'GPL License',
+                                'All Rights Reserved' => 'All Rights Reserved'
+                            ];
+                            $currentLicense = $model['license'] ?? 'CC BY-NC';
+                            foreach ($licenses as $value => $label): ?>
+                                <option value="<?= $value ?>" <?= $currentLicense === $value ? 'selected' : '' ?>>
+                                    <?= $label ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tags</label>
+                        <input type="text" name="tags" id="edit-model-tags" class="form-input"
+                               placeholder="Enter tags separated by commas"
+                               value="<?= sanitize(implode(', ', $model['tags'] ?? [])) ?>">
+                        <div class="form-hint">Separate tags with commas (e.g., gaming, miniature, terrain)</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="Modal.hide('edit-model-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Footer -->
     <footer class="footer">
@@ -1019,6 +1095,41 @@ foreach ($relatedModels as $index => $rm) {
         // Legacy function for fullscreen close button
         function closeFullscreen() {
             GalleryController.closeFullscreen();
+        }
+
+        // Edit model functions
+        function openEditModal() {
+            Modal.show('edit-model-modal');
+        }
+
+        async function submitModelEdit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            formData.append('action', 'update_model');
+
+            // Convert tags string to JSON array
+            const tagsInput = formData.get('tags');
+            const tagsArray = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+            formData.set('tags', JSON.stringify(tagsArray));
+
+            try {
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    Toast.success('Model updated successfully!');
+                    Modal.hide('edit-model-modal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    Toast.error(result.error || 'Failed to update model');
+                }
+            } catch (err) {
+                Toast.error('Failed to update model');
+            }
         }
     </script>
 </body>
