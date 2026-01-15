@@ -357,6 +357,29 @@ try {
 
 outputMessage("✓ Connected to database successfully!", false);
 
+// Check for reset parameter (clear database before setup)
+$resetDatabase = isset($_GET['reset']) || (isset($argv) && in_array('--reset', $argv));
+
+if ($resetDatabase) {
+    outputMessage("🗑️ Clearing existing database tables...", false);
+
+    // Drop tables in reverse order of dependencies
+    $dropTables = [
+        'favorites',
+        'model_photos',
+        'model_files',
+        'models',
+        'categories',
+        'users'
+    ];
+
+    foreach ($dropTables as $table) {
+        $conn->query("DROP TABLE IF EXISTS `$table`");
+    }
+
+    outputMessage("✓ Existing tables cleared!", false);
+}
+
 // SQL for creating tables
 $sql = "
 -- Users table
@@ -430,7 +453,9 @@ CREATE TABLE IF NOT EXISTS model_files (
     has_color BOOLEAN DEFAULT FALSE,
     file_order INT DEFAULT 0,
     FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    INDEX idx_model_id (model_id)
+    INDEX idx_model_id (model_id),
+    UNIQUE KEY unique_model_file (model_id, filename),
+    UNIQUE KEY unique_model_file_order (model_id, file_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Model photos table (for multiple photos per model)
@@ -441,7 +466,9 @@ CREATE TABLE IF NOT EXISTS model_photos (
     is_primary BOOLEAN DEFAULT FALSE,
     photo_order INT DEFAULT 0,
     FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    INDEX idx_model_id (model_id)
+    INDEX idx_model_id (model_id),
+    UNIQUE KEY unique_model_photo (model_id, filename),
+    UNIQUE KEY unique_model_photo_order (model_id, photo_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Favorites table (many-to-many relationship)
@@ -547,10 +574,17 @@ if (!$isCli) {
         <li><strong>For security:</strong> Delete or restrict access to <code>setup_database.php</code></li>
     </ol>
 
+    <div class="message info">
+        <strong>💡 Tip:</strong> If you're experiencing duplicate models or need to start fresh, run
+        <code>setup_database.php?reset=1</code> to clear all tables before recreating them,
+        then run the migration script again.
+    </div>
+
     <h2>🔗 Quick Links</h2>
     <a href="index.php" class="btn">🏠 Go to Site</a>
     <a href="login.php" class="btn">🔐 Log In</a>
     <a href="migrate_json_to_mysql.php" class="btn">📦 Migrate JSON Data</a>
+    <a href="setup_database.php?reset=1" class="btn" onclick="return confirm('This will DELETE all data in the database. Are you sure?');">🗑️ Reset & Rebuild Database</a>
 
     </div>
     </body>
@@ -565,5 +599,8 @@ if (!$isCli) {
     echo "2. Update your file permissions if needed\n";
     echo "3. Log in with admin credentials and change the password\n";
     echo "4. Delete or restrict access to this setup file for security\n\n";
+    echo "Tip: If experiencing duplicate models, run with --reset flag:\n";
+    echo "     php setup_database.php --reset\n";
+    echo "     This will clear all tables before recreating them.\n\n";
 }
 ?>
