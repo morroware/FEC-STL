@@ -314,19 +314,19 @@ switch ($action) {
     case 'download_model':
         $id = $_POST['id'] ?? $_GET['id'] ?? '';
         $model = getModel($id);
-        
+
         if (!$model) {
             jsonResponse(['success' => false, 'error' => 'Model not found'], 404);
         }
-        
+
         incrementModelStat($id, 'downloads');
-        
+
         // Update user download count
         $author = getUser($model['user_id']);
         if ($author) {
             updateUser($model['user_id'], ['download_count' => ($author['download_count'] ?? 0) + 1]);
         }
-        
+
         $downloadFile = $model['filename'];
         if (!empty($model['files']) && is_array($model['files'])) {
             $downloadFile = $model['files'][0]['filename'] ?? $downloadFile;
@@ -338,6 +338,60 @@ switch ($action) {
             'download_url' => 'uploads/' . $downloadFile,
             'filename' => $model['title'] . '.' . $downloadExt
         ]);
+        break;
+
+    case 'download_model_zip':
+        $id = $_POST['id'] ?? $_GET['id'] ?? '';
+        $model = getModel($id);
+
+        if (!$model) {
+            jsonResponse(['success' => false, 'error' => 'Model not found'], 404);
+        }
+
+        // Get files array
+        $files = $model['files'] ?? [['filename' => $model['filename'], 'original_name' => pathinfo($model['filename'], PATHINFO_FILENAME), 'extension' => pathinfo($model['filename'], PATHINFO_EXTENSION)]];
+
+        if (empty($files)) {
+            jsonResponse(['success' => false, 'error' => 'No files to download'], 400);
+        }
+
+        // Increment download stats
+        incrementModelStat($id, 'downloads');
+        $author = getUser($model['user_id']);
+        if ($author) {
+            updateUser($model['user_id'], ['download_count' => ($author['download_count'] ?? 0) + 1]);
+        }
+
+        // Create ZIP file
+        $zipFilename = sys_get_temp_dir() . '/' . generateId() . '.zip';
+        $zip = new ZipArchive();
+
+        if ($zip->open($zipFilename, ZipArchive::CREATE) !== true) {
+            jsonResponse(['success' => false, 'error' => 'Failed to create ZIP file'], 500);
+        }
+
+        // Add files to ZIP
+        foreach ($files as $file) {
+            $filePath = UPLOADS_DIR . $file['filename'];
+            if (file_exists($filePath)) {
+                $extension = $file['extension'] ?? pathinfo($file['filename'], PATHINFO_EXTENSION);
+                $archiveName = ($file['original_name'] ?? pathinfo($file['filename'], PATHINFO_FILENAME)) . '.' . $extension;
+                $zip->addFile($filePath, $archiveName);
+            }
+        }
+
+        $zip->close();
+
+        // Serve the ZIP file
+        $safeTitle = preg_replace('/[^a-zA-Z0-9_-]/', '_', $model['title']);
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $safeTitle . '.zip"');
+        header('Content-Length: ' . filesize($zipFilename));
+        header('Cache-Control: no-cache, must-revalidate');
+
+        readfile($zipFilename);
+        unlink($zipFilename); // Clean up temp file
+        exit;
         break;
         
     case 'like_model':

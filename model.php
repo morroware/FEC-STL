@@ -884,19 +884,10 @@ foreach ($relatedModels as $index => $rm) {
             }
         }
 
-        // Download all files sequentially
-        async function downloadAllFiles() {
-            Toast.info(`Downloading ${modelFiles.length} files...`);
-
-            for (let i = 0; i < modelFiles.length; i++) {
-                await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between downloads
-                downloadSingleFile(i);
-            }
-
-            // Increment download count once
-            try {
-                await API.downloadModel('<?= $modelId ?>');
-            } catch (e) {}
+        // Download all files as a single ZIP
+        function downloadAllFiles() {
+            Toast.info('Preparing ZIP download...');
+            window.location.href = 'api.php?action=download_model_zip&id=<?= $modelId ?>';
         }
 
         // Download a single file by index
