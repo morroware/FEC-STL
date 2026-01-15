@@ -11,7 +11,7 @@ $query = $_GET['q'] ?? '';
 $categoryFilter = $_GET['category'] ?? '';
 $sort = $_GET['sort'] ?? 'newest';
 $page = max(1, intval($_GET['page'] ?? 1));
-$limit = 20;
+$limit = 16;
 
 // Get data
 $categories = getCategories();
