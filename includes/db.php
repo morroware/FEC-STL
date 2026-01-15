@@ -96,9 +96,19 @@ if (USE_MYSQL) {
         $conn = getDbConnection();
         $id = generateId();
 
-        $stmt = $conn->prepare("INSERT INTO users (id, username, email, password, is_admin, avatar, bio, location, model_count, download_count) VALUES (?, ?, ?, ?, 0, NULL, '', '', 0, 0)");
+        // Ensure approved column exists
+        $result = $conn->query("SHOW COLUMNS FROM users LIKE 'approved'");
+        if ($result->num_rows === 0) {
+            $conn->query("ALTER TABLE users ADD COLUMN approved TINYINT(1) DEFAULT 1");
+        }
+
+        // Determine if user needs approval (skip for admins or if using invite code)
+        $needsApproval = !empty($data['needs_approval']);
+        $approved = $needsApproval ? 0 : 1;
+
+        $stmt = $conn->prepare("INSERT INTO users (id, username, email, password, is_admin, approved, avatar, bio, location, model_count, download_count) VALUES (?, ?, ?, ?, 0, ?, NULL, '', '', 0, 0)");
         $password = password_hash($data['password'], PASSWORD_DEFAULT);
-        $stmt->bind_param("ssss", $id, $data['username'], $data['email'], $password);
+        $stmt->bind_param("ssssi", $id, $data['username'], $data['email'], $password, $approved);
 
         if ($stmt->execute()) {
             return $id;
@@ -904,6 +914,169 @@ if (USE_MYSQL) {
         return true;
     }
 
+    /**
+     * Invite Code Operations (MySQL)
+     */
+    function ensureInvitesTable(): void {
+        $conn = getDbConnection();
+        $result = $conn->query("SHOW TABLES LIKE 'invites'");
+        if ($result->num_rows === 0) {
+            $conn->query("
+                CREATE TABLE IF NOT EXISTS invites (
+                    id VARCHAR(32) PRIMARY KEY,
+                    code VARCHAR(20) UNIQUE NOT NULL,
+                    created_by VARCHAR(32) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NULL,
+                    max_uses INT DEFAULT 1,
+                    uses INT DEFAULT 0,
+                    note VARCHAR(255) DEFAULT '',
+                    active TINYINT(1) DEFAULT 1,
+                    INDEX (code),
+                    INDEX (active)
+                )
+            ");
+        }
+    }
+
+    function getInvites(): array {
+        ensureInvitesTable();
+        $conn = getDbConnection();
+        $result = $conn->query("SELECT * FROM invites ORDER BY created_at DESC");
+        $invites = [];
+        while ($row = $result->fetch_assoc()) {
+            $row['active'] = (bool)$row['active'];
+            $invites[] = $row;
+        }
+        return $invites;
+    }
+
+    function getInvite(string $id): ?array {
+        ensureInvitesTable();
+        $conn = getDbConnection();
+        $stmt = $conn->prepare("SELECT * FROM invites WHERE id = ?");
+        $stmt->bind_param("s", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $row['active'] = (bool)$row['active'];
+            return $row;
+        }
+        return null;
+    }
+
+    function getInviteByCode(string $code): ?array {
+        ensureInvitesTable();
+        $conn = getDbConnection();
+        $stmt = $conn->prepare("SELECT * FROM invites WHERE code = ?");
+        $stmt->bind_param("s", $code);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $row['active'] = (bool)$row['active'];
+            return $row;
+        }
+        return null;
+    }
+
+    function createInvite(array $data): ?string {
+        ensureInvitesTable();
+        $conn = getDbConnection();
+        $id = generateId();
+        $code = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+
+        $expiresAt = null;
+        if (!empty($data['expires_days'])) {
+            $expiresAt = date('Y-m-d H:i:s', strtotime('+' . (int)$data['expires_days'] . ' days'));
+        }
+
+        $stmt = $conn->prepare("
+            INSERT INTO invites (id, code, created_by, expires_at, max_uses, note, active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+        ");
+        $maxUses = (int)($data['max_uses'] ?? 1);
+        $note = $data['note'] ?? '';
+        $stmt->bind_param("ssssis", $id, $code, $data['created_by'], $expiresAt, $maxUses, $note);
+
+        return $stmt->execute() ? $code : null;
+    }
+
+    function useInviteCode(string $code): bool {
+        $invite = getInviteByCode($code);
+        if (!$invite || !isInviteValid($invite)) {
+            return false;
+        }
+
+        $conn = getDbConnection();
+        $stmt = $conn->prepare("UPDATE invites SET uses = uses + 1 WHERE code = ?");
+        $stmt->bind_param("s", $code);
+        return $stmt->execute();
+    }
+
+    function deleteInvite(string $id): bool {
+        $conn = getDbConnection();
+        $stmt = $conn->prepare("DELETE FROM invites WHERE id = ?");
+        $stmt->bind_param("s", $id);
+        return $stmt->execute();
+    }
+
+    function toggleInvite(string $id): bool {
+        $conn = getDbConnection();
+        $stmt = $conn->prepare("UPDATE invites SET active = NOT active WHERE id = ?");
+        $stmt->bind_param("s", $id);
+        return $stmt->execute();
+    }
+
+    /**
+     * Pending Users Operations (MySQL)
+     */
+    function getPendingUsers(): array {
+        $conn = getDbConnection();
+        // Check if approved column exists
+        $result = $conn->query("SHOW COLUMNS FROM users LIKE 'approved'");
+        if ($result->num_rows === 0) {
+            $conn->query("ALTER TABLE users ADD COLUMN approved TINYINT(1) DEFAULT 1");
+            return []; // No pending users if column just added
+        }
+
+        $result = $conn->query("SELECT * FROM users WHERE approved = 0 ORDER BY created_at DESC");
+        $users = [];
+        while ($row = $result->fetch_assoc()) {
+            $users[] = formatUserRow($row);
+        }
+        return $users;
+    }
+
+    function approveUser(string $id): bool {
+        $conn = getDbConnection();
+        $stmt = $conn->prepare("UPDATE users SET approved = 1 WHERE id = ?");
+        $stmt->bind_param("s", $id);
+        return $stmt->execute();
+    }
+
+    function rejectUser(string $id): bool {
+        // Delete the user and their data
+        return deleteUser($id);
+    }
+
+    function isUserApproved(string $id): bool {
+        $conn = getDbConnection();
+        // Check if approved column exists
+        $result = $conn->query("SHOW COLUMNS FROM users LIKE 'approved'");
+        if ($result->num_rows === 0) {
+            return true; // No approval system = all approved
+        }
+
+        $stmt = $conn->prepare("SELECT approved FROM users WHERE id = ?");
+        $stmt->bind_param("s", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            return (bool)$row['approved'];
+        }
+        return false;
+    }
+
 } else {
     // ============================================================================
     // JSON FALLBACK IMPLEMENTATION
@@ -1011,12 +1184,16 @@ if (USE_MYSQL) {
         $users = getUsers();
         $id = generateId();
 
+        // Determine if user needs approval
+        $needsApproval = !empty($data['needs_approval']);
+
         $user = [
             'id' => $id,
             'username' => $data['username'],
             'email' => $data['email'],
             'password' => password_hash($data['password'], PASSWORD_DEFAULT),
             'is_admin' => false,
+            'approved' => !$needsApproval,
             'avatar' => null,
             'bio' => '',
             'location' => '',
@@ -1496,6 +1673,138 @@ if (USE_MYSQL) {
         $settings = array_merge($settings, $newSettings);
         return writeJsonFile(SETTINGS_FILE, $settings);
     }
+
+    /**
+     * Invite Code Operations (JSON)
+     */
+    define('INVITES_FILE', DATA_DIR . 'invites.json');
+
+    function getInvites(): array {
+        if (!file_exists(INVITES_FILE)) {
+            writeJsonFile(INVITES_FILE, []);
+        }
+        return readJsonFile(INVITES_FILE);
+    }
+
+    function getInvite(string $id): ?array {
+        $invites = getInvites();
+        foreach ($invites as $invite) {
+            if ($invite['id'] === $id) return $invite;
+        }
+        return null;
+    }
+
+    function getInviteByCode(string $code): ?array {
+        $invites = getInvites();
+        foreach ($invites as $invite) {
+            if ($invite['code'] === $code) return $invite;
+        }
+        return null;
+    }
+
+    function createInvite(array $data): ?string {
+        $invites = getInvites();
+        $id = generateId();
+        $code = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+
+        $expiresAt = null;
+        if (!empty($data['expires_days'])) {
+            $expiresAt = date('Y-m-d H:i:s', strtotime('+' . (int)$data['expires_days'] . ' days'));
+        }
+
+        $invite = [
+            'id' => $id,
+            'code' => $code,
+            'created_by' => $data['created_by'],
+            'created_at' => date('Y-m-d H:i:s'),
+            'expires_at' => $expiresAt,
+            'max_uses' => (int)($data['max_uses'] ?? 1),
+            'uses' => 0,
+            'note' => $data['note'] ?? '',
+            'active' => true
+        ];
+
+        $invites[] = $invite;
+        return writeJsonFile(INVITES_FILE, $invites) ? $code : null;
+    }
+
+    function useInviteCode(string $code): bool {
+        $invites = getInvites();
+        foreach ($invites as &$invite) {
+            if ($invite['code'] === $code && isInviteValid($invite)) {
+                $invite['uses']++;
+                return writeJsonFile(INVITES_FILE, $invites);
+            }
+        }
+        return false;
+    }
+
+    function deleteInvite(string $id): bool {
+        $invites = getInvites();
+        $invites = array_filter($invites, fn($i) => $i['id'] !== $id);
+        return writeJsonFile(INVITES_FILE, array_values($invites));
+    }
+
+    function toggleInvite(string $id): bool {
+        $invites = getInvites();
+        foreach ($invites as &$invite) {
+            if ($invite['id'] === $id) {
+                $invite['active'] = !$invite['active'];
+                return writeJsonFile(INVITES_FILE, $invites);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Pending Users Operations (JSON)
+     */
+    function getPendingUsers(): array {
+        $users = getUsers();
+        return array_filter($users, fn($u) => isset($u['approved']) && $u['approved'] === false);
+    }
+
+    function approveUser(string $id): bool {
+        return updateUser($id, ['approved' => true]);
+    }
+
+    function rejectUser(string $id): bool {
+        return deleteUser($id);
+    }
+
+    function isUserApproved(string $id): bool {
+        $user = getUser($id);
+        if (!$user) return false;
+        // If no approved field, user is approved (legacy)
+        return !isset($user['approved']) || $user['approved'] === true;
+    }
+}
+
+/**
+ * Shared Invite Helper Functions
+ */
+function isInviteValid(array $invite): bool {
+    if (!$invite['active']) return false;
+    if ($invite['max_uses'] > 0 && $invite['uses'] >= $invite['max_uses']) return false;
+    if ($invite['expires_at'] && strtotime($invite['expires_at']) < time()) return false;
+    return true;
+}
+
+function validateInviteCode(string $code): array {
+    $invite = getInviteByCode($code);
+    if (!$invite) {
+        return ['valid' => false, 'error' => 'Invalid invite code'];
+    }
+    if (!$invite['active']) {
+        return ['valid' => false, 'error' => 'This invite code has been deactivated'];
+    }
+    if ($invite['max_uses'] > 0 && $invite['uses'] >= $invite['max_uses']) {
+        return ['valid' => false, 'error' => 'This invite code has reached its usage limit'];
+    }
+    if ($invite['expires_at'] && strtotime($invite['expires_at']) < time()) {
+        return ['valid' => false, 'error' => 'This invite code has expired'];
+    }
+    return ['valid' => true, 'invite' => $invite];
 }
 
 /**
@@ -1513,6 +1822,7 @@ function getDefaultSettings(): array {
 
         // Registration & Users
         'allow_registration' => true,
+        'require_admin_approval' => false,
         'require_email_verification' => false,
         'default_user_role' => 'user',
 
@@ -1624,7 +1934,8 @@ function getSettingsSchema(): array {
             'label' => 'Users & Registration',
             'icon' => 'fa-users',
             'settings' => [
-                'allow_registration' => ['label' => 'Allow Registration', 'type' => 'toggle', 'description' => 'Allow new users to register'],
+                'allow_registration' => ['label' => 'Allow Registration', 'type' => 'toggle', 'description' => 'Allow new users to register publicly'],
+                'require_admin_approval' => ['label' => 'Require Admin Approval', 'type' => 'toggle', 'description' => 'New users must be approved by admin before accessing the site'],
                 'require_email_verification' => ['label' => 'Require Email Verification', 'type' => 'toggle', 'description' => 'Require email verification before login'],
                 'enable_user_profiles' => ['label' => 'Enable User Profiles', 'type' => 'toggle', 'description' => 'Allow users to have public profiles'],
             ]

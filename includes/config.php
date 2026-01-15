@@ -136,3 +136,13 @@ function getAllowedExtensions(): array {
 function isFeatureEnabled(string $feature): bool {
     return setting('enable_' . $feature, true) === true;
 }
+
+/**
+ * Check if current user needs approval
+ */
+function isCurrentUserApproved(): bool {
+    if (!isLoggedIn()) return false;
+    if (isAdmin()) return true;
+    require_once __DIR__ . '/db.php';
+    return isUserApproved($_SESSION['user_id']);
+}
