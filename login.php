@@ -218,13 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 <?php endif; ?>
 
-                <!-- Demo Credentials -->
-                <div style="margin-top: 24px; padding: 16px; background: var(--bg-elevated); border-radius: var(--radius-md); text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
-                        <i class="fas fa-info-circle"></i> Demo Admin Login
-                    </div>
-                    <code style="color: var(--neon-cyan);">admin</code> / <code style="color: var(--neon-cyan);">admin123</code>
-                </div>
+            
             </div>
         </div>
     </div>
