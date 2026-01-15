@@ -145,6 +145,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             if ($modelId) {
+                // Check if this is an AJAX request
+                $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+                          strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+                if ($isAjax) {
+                    // Return JSON response for AJAX uploads
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'model_id' => $modelId]);
+                    exit;
+                }
+
                 redirect('model.php?id=' . $modelId);
             } else {
                 // Cleanup uploaded files on failure
@@ -1246,12 +1257,29 @@ $user = getCurrentUser();
 
                         updateUploadProgress(100, 'Processing...');
 
-                        // Check for PHP errors in response
                         const responseText = xhr.responseText;
 
-                        // Check if response starts with error HTML
+                        // Try to parse as JSON first (AJAX response)
+                        try {
+                            const jsonResponse = JSON.parse(responseText);
+                            if (jsonResponse.success && jsonResponse.model_id) {
+                                updateUploadProgress(100, 'Upload complete! Redirecting...');
+                                setTimeout(() => {
+                                    window.location.href = 'model.php?id=' + jsonResponse.model_id;
+                                }, 500);
+                                resolve();
+                                return;
+                            } else if (jsonResponse.error) {
+                                hideUploadProgress();
+                                reject(new Error(jsonResponse.error));
+                                return;
+                            }
+                        } catch (e) {
+                            // Not JSON, continue with HTML parsing
+                        }
+
+                        // Check if response is HTML with error
                         if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<')) {
-                            // PHP error occurred - extract error message if possible
                             const errorMatch = responseText.match(/<div class="alert alert-error"[^>]*>([\s\S]*?)<\/div>/i);
                             if (errorMatch) {
                                 const errorDiv = document.createElement('div');
@@ -1261,23 +1289,25 @@ $user = getCurrentUser();
                                 reject(new Error(errorText || 'Upload failed'));
                                 return;
                             }
-                        }
 
-                        // Success - show completion message
-                        updateUploadProgress(100, 'Upload complete! Redirecting...');
-
-                        setTimeout(() => {
-                            // Form was submitted successfully, let browser handle redirect
-                            // Extract model ID from redirect if present in HTML
+                            // Try to extract model ID from HTML (fallback for non-AJAX responses)
                             const redirectMatch = responseText.match(/model\.php\?id=([a-zA-Z0-9]+)/);
                             if (redirectMatch) {
-                                window.location.href = 'model.php?id=' + redirectMatch[1];
-                            } else {
-                                // Fallback: just submit the form normally
-                                uploadForm.submit();
+                                updateUploadProgress(100, 'Upload complete! Redirecting...');
+                                setTimeout(() => {
+                                    window.location.href = 'model.php?id=' + redirectMatch[1];
+                                }, 500);
+                                resolve();
+                                return;
                             }
-                        }, 500);
+                        }
 
+                        // Fallback - go to browse page (don't resubmit form!)
+                        hideUploadProgress();
+                        Toast.success('Model uploaded successfully!');
+                        setTimeout(() => {
+                            window.location.href = 'browse.php?sort=newest';
+                        }, 1000);
                         resolve();
                     } else {
                         reject(new Error('Upload failed with status: ' + xhr.status));
@@ -1295,6 +1325,7 @@ $user = getCurrentUser();
 
                 // Send request
                 xhr.open('POST', uploadForm.action || window.location.href);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                 xhr.send(formData);
             });
         }
