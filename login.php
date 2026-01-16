@@ -139,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $showRegister ? 'Create Account' : 'Sign In' ?> - <?= SITE_NAME ?></title>
+    <title><?= $showRegister ? 'Create Account' : 'Sign In' ?> - <?= getSiteName() ?></title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="container">
             <a href="index.php" class="logo">
                 <div class="logo-icon"><i class="fas fa-cube"></i></div>
-                <span><?= SITE_NAME ?></span>
+                <span><?= getSiteName() ?></span>
             </a>
             
             <div class="nav-links">
@@ -329,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a href="browse.php">Browse</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
+                    &copy; <?= date('Y') ?> <?= getSiteName() ?>. A community-driven platform.
                 </div>
             </div>
         </div>

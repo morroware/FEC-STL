@@ -47,7 +47,7 @@ foreach ($trendingModels as $index => $model) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= SITE_NAME ?> - <?= SITE_TAGLINE ?></title>
+    <title><?= getSiteName() ?> - <?= setting('site_tagline', SITE_TAGLINE) ?></title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -66,7 +66,7 @@ foreach ($trendingModels as $index => $model) {
         <div class="container">
             <a href="index.php" class="logo">
                 <div class="logo-icon"><i class="fas fa-cube"></i></div>
-                <span><?= SITE_NAME ?></span>
+                <span><?= getSiteName() ?></span>
             </a>
             
             <div class="nav-links">
@@ -107,7 +107,7 @@ foreach ($trendingModels as $index => $model) {
         <section class="hero">
             <div class="container">
                 <h1 class="hero-title">
-                    <span class="text-gradient"><?= SITE_NAME ?></span>
+                    <span class="text-gradient"><?= getSiteName() ?></span>
                 </h1>
                 <p class="hero-subtitle">
                     Discover, download, and share high-quality 3D models for your community.
@@ -382,7 +382,7 @@ foreach ($trendingModels as $index => $model) {
                     <a href="login.php">Sign In</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
+                    &copy; <?= date('Y') ?> <?= getSiteName() ?>. A community-driven platform.
                 </div>
             </div>
         </div>

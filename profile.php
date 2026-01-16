@@ -65,7 +65,7 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= sanitize($profileUser['username']) ?> - <?= SITE_NAME ?></title>
+    <title><?= sanitize($profileUser['username']) ?> - <?= getSiteName() ?></title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,7 +79,7 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
         <div class="container">
             <a href="index.php" class="logo">
                 <div class="logo-icon"><i class="fas fa-cube"></i></div>
-                <span><?= SITE_NAME ?></span>
+                <span><?= getSiteName() ?></span>
             </a>
             
             <div class="nav-links">
@@ -544,7 +544,7 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
                     <a href="browse.php">Browse</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
+                    &copy; <?= date('Y') ?> <?= getSiteName() ?>. A community-driven platform.
                 </div>
             </div>
         </div>
