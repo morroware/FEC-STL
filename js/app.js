@@ -48,13 +48,57 @@ const COLOR_PALETTE = [
 class ModelViewer {
     constructor(container, options = {}) {
         this.container = container;
+
+        // Use settings from window.VIEWER_SETTINGS or fallback to defaults
+        const settings = window.VIEWER_SETTINGS || {};
+
         this.options = {
-            backgroundColor: 0x0a0a0f,
+            // Scene & Background
+            backgroundColor: settings.backgroundColor || 0x0a0a0f,
+            enableShadows: settings.enableShadows !== undefined ? settings.enableShadows : true,
+            shadowQuality: settings.shadowQuality || 2048,
+            enableFog: settings.enableFog || false,
+            fogColor: settings.fogColor || 0x000000,
+            fogDensity: settings.fogDensity || 0.0005,
+            toneMappingExposure: settings.toneMappingExposure || 1.2,
+
+            // Model & Display
             modelColor: 0x00f0ff,
             wireframe: false,
             autoRotate: true,
             showGrid: false,
             enableEnvironment: true,
+
+            // Lighting
+            ambientLightColor: settings.ambientLightColor || 0xffffff,
+            ambientLightIntensity: settings.ambientLightIntensity !== undefined ? settings.ambientLightIntensity : 0.6,
+            hemisphereEnabled: settings.hemisphereEnabled !== undefined ? settings.hemisphereEnabled : true,
+            hemisphereSkyColor: settings.hemisphereSkyColor || 0x00f0ff,
+            hemisphereGroundColor: settings.hemisphereGroundColor || 0xff00aa,
+            hemisphereIntensity: settings.hemisphereIntensity !== undefined ? settings.hemisphereIntensity : 0.3,
+            keyLightColor: settings.keyLightColor || 0xffffff,
+            keyLightIntensity: settings.keyLightIntensity !== undefined ? settings.keyLightIntensity : 0.7,
+            fillLightColor: settings.fillLightColor || 0x00f0ff,
+            fillLightIntensity: settings.fillLightIntensity !== undefined ? settings.fillLightIntensity : 0.4,
+            rimLightColor: settings.rimLightColor || 0xff00aa,
+            rimLightIntensity: settings.rimLightIntensity !== undefined ? settings.rimLightIntensity : 0.3,
+            topLightIntensity: settings.topLightIntensity !== undefined ? settings.topLightIntensity : 0.3,
+            pointLight1Enabled: settings.pointLight1Enabled !== undefined ? settings.pointLight1Enabled : true,
+            pointLight1Color: settings.pointLight1Color || 0x00f0ff,
+            pointLight1Intensity: settings.pointLight1Intensity !== undefined ? settings.pointLight1Intensity : 0.5,
+            pointLight2Enabled: settings.pointLight2Enabled !== undefined ? settings.pointLight2Enabled : true,
+            pointLight2Color: settings.pointLight2Color || 0xff00aa,
+            pointLight2Intensity: settings.pointLight2Intensity !== undefined ? settings.pointLight2Intensity : 0.3,
+
+            // Material
+            materialMetalness: settings.materialMetalness !== undefined ? settings.materialMetalness : 0.1,
+            materialRoughness: settings.materialRoughness !== undefined ? settings.materialRoughness : 0.5,
+            materialEnvIntensity: settings.materialEnvIntensity !== undefined ? settings.materialEnvIntensity : 0.5,
+
+            // Environment
+            envTopColor: settings.envTopColor || 0x0a0a1a,
+            envBottomColor: settings.envBottomColor || 0x000000,
+
             ...options
         };
 
@@ -95,10 +139,15 @@ class ModelViewer {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.outputEncoding = THREE.sRGBEncoding;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.2;
-        this.renderer.shadowMap.enabled = true;
+        this.renderer.toneMappingExposure = this.options.toneMappingExposure;
+        this.renderer.shadowMap.enabled = this.options.enableShadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.container.appendChild(this.renderer.domElement);
+
+        // Optional fog
+        if (this.options.enableFog) {
+            this.scene.fog = new THREE.FogExp2(this.options.fogColor, this.options.fogDensity);
+        }
 
         // Controls
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
@@ -131,47 +180,57 @@ class ModelViewer {
     }
 
     setupLighting() {
-        // Ambient light - brighter for better visibility at all distances
-        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        // Ambient light
+        const ambient = new THREE.AmbientLight(this.options.ambientLightColor, this.options.ambientLightIntensity);
         this.scene.add(ambient);
 
-        // Hemisphere light for natural sky/ground lighting
-        const hemi = new THREE.HemisphereLight(0x00f0ff, 0xff00aa, 0.3);
-        this.scene.add(hemi);
+        // Hemisphere light (optional)
+        if (this.options.hemisphereEnabled) {
+            const hemi = new THREE.HemisphereLight(
+                this.options.hemisphereSkyColor,
+                this.options.hemisphereGroundColor,
+                this.options.hemisphereIntensity
+            );
+            this.scene.add(hemi);
+        }
 
         // Key light (main light with shadows)
-        const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        const keyLight = new THREE.DirectionalLight(this.options.keyLightColor, this.options.keyLightIntensity);
         keyLight.position.set(50, 100, 50);
-        keyLight.castShadow = true;
-        keyLight.shadow.mapSize.width = 2048;
-        keyLight.shadow.mapSize.height = 2048;
+        keyLight.castShadow = this.options.enableShadows;
+        keyLight.shadow.mapSize.width = this.options.shadowQuality;
+        keyLight.shadow.mapSize.height = this.options.shadowQuality;
         keyLight.shadow.camera.near = 0.5;
         keyLight.shadow.camera.far = 500;
         this.scene.add(keyLight);
 
-        // Fill light - cyan accent
-        const fillLight = new THREE.DirectionalLight(0x00f0ff, 0.4);
+        // Fill light
+        const fillLight = new THREE.DirectionalLight(this.options.fillLightColor, this.options.fillLightIntensity);
         fillLight.position.set(-50, 0, 50);
         this.scene.add(fillLight);
 
-        // Rim light - magenta accent for edge definition
-        const rimLight = new THREE.DirectionalLight(0xff00aa, 0.3);
+        // Rim light for edge definition
+        const rimLight = new THREE.DirectionalLight(this.options.rimLightColor, this.options.rimLightIntensity);
         rimLight.position.set(0, -50, -50);
         this.scene.add(rimLight);
 
         // Top light for highlights
-        const topLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        const topLight = new THREE.DirectionalLight(0xffffff, this.options.topLightIntensity);
         topLight.position.set(0, 100, 0);
         this.scene.add(topLight);
 
-        // Point lights for extra pop
-        const pointLight1 = new THREE.PointLight(0x00f0ff, 0.5, 150);
-        pointLight1.position.set(30, 30, 30);
-        this.scene.add(pointLight1);
+        // Point lights (optional)
+        if (this.options.pointLight1Enabled) {
+            const pointLight1 = new THREE.PointLight(this.options.pointLight1Color, this.options.pointLight1Intensity, 150);
+            pointLight1.position.set(30, 30, 30);
+            this.scene.add(pointLight1);
+        }
 
-        const pointLight2 = new THREE.PointLight(0xff00aa, 0.3, 150);
-        pointLight2.position.set(-30, -10, 20);
-        this.scene.add(pointLight2);
+        if (this.options.pointLight2Enabled) {
+            const pointLight2 = new THREE.PointLight(this.options.pointLight2Color, this.options.pointLight2Intensity, 150);
+            pointLight2.position.set(-30, -10, 20);
+            this.scene.add(pointLight2);
+        }
     }
 
     createEnvironmentMap() {
@@ -187,8 +246,8 @@ class ModelViewer {
         const envMaterial = new THREE.ShaderMaterial({
             side: THREE.BackSide,
             uniforms: {
-                topColor: { value: new THREE.Color(0x0a0a1a) },
-                bottomColor: { value: new THREE.Color(0x000000) },
+                topColor: { value: new THREE.Color(this.options.envTopColor) },
+                bottomColor: { value: new THREE.Color(this.options.envBottomColor) },
                 offset: { value: 20 },
                 exponent: { value: 0.6 }
             },
@@ -408,10 +467,10 @@ class ModelViewer {
     createMaterial(color) {
         const materialOptions = {
             color: color,
-            metalness: 0.1,
-            roughness: 0.5,
+            metalness: this.options.materialMetalness,
+            roughness: this.options.materialRoughness,
             envMap: this.envMap,
-            envMapIntensity: 0.5
+            envMapIntensity: this.options.materialEnvIntensity
         };
 
         return new THREE.MeshPhysicalMaterial(materialOptions);
@@ -570,6 +629,20 @@ class ThumbnailViewer {
         this.initAttempts = 0;
         this.handleResize = this.handleResize.bind(this);
 
+        // Use settings from window.VIEWER_SETTINGS or fallback to defaults
+        const settings = window.VIEWER_SETTINGS || {};
+        this.settings = {
+            backgroundColor: settings.backgroundColor || 0x0a0a0f,
+            ambientLightColor: settings.ambientLightColor || 0xffffff,
+            ambientLightIntensity: settings.ambientLightIntensity !== undefined ? settings.ambientLightIntensity : 0.6,
+            keyLightColor: settings.keyLightColor || 0xffffff,
+            keyLightIntensity: settings.keyLightIntensity !== undefined ? settings.keyLightIntensity : 0.7,
+            fillLightColor: settings.fillLightColor || 0x00f0ff,
+            fillLightIntensity: settings.fillLightIntensity !== undefined ? settings.fillLightIntensity : 0.4,
+            materialMetalness: settings.materialMetalness !== undefined ? settings.materialMetalness : 0.1,
+            materialRoughness: settings.materialRoughness !== undefined ? settings.materialRoughness : 0.5
+        };
+
         // Prevent double initialization
         if (container.dataset.viewerInitialized === 'true') {
             return;
@@ -591,7 +664,7 @@ class ThumbnailViewer {
 
         // Scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x0a0a0f);
+        this.scene.background = new THREE.Color(this.settings.backgroundColor);
 
         // Camera
         this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -611,14 +684,14 @@ class ThumbnailViewer {
         this.setupResizeObserver();
 
         // Lighting
-        const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+        const ambient = new THREE.AmbientLight(this.settings.ambientLightColor, this.settings.ambientLightIntensity);
         this.scene.add(ambient);
 
-        const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+        const directional = new THREE.DirectionalLight(this.settings.keyLightColor, this.settings.keyLightIntensity);
         directional.position.set(50, 50, 50);
         this.scene.add(directional);
 
-        const fillLight = new THREE.DirectionalLight(0x00f0ff, 0.3);
+        const fillLight = new THREE.DirectionalLight(this.settings.fillLightColor, this.settings.fillLightIntensity);
         fillLight.position.set(-30, 0, 30);
         this.scene.add(fillLight);
 
@@ -737,8 +810,8 @@ class ThumbnailViewer {
 
                     const material = new THREE.MeshPhysicalMaterial({
                         color: 0x00f0ff,
-                        metalness: 0.1,
-                        roughness: 0.5
+                        metalness: this.settings.materialMetalness,
+                        roughness: this.settings.materialRoughness
                     });
 
                     this.mesh = new THREE.Mesh(geometry, material);
@@ -776,8 +849,8 @@ class ThumbnailViewer {
             if (child.isMesh) {
                 child.material = new THREE.MeshPhysicalMaterial({
                     color: 0x00f0ff,
-                    metalness: 0.1,
-                    roughness: 0.5
+                    metalness: this.settings.materialMetalness,
+                    roughness: this.settings.materialRoughness
                 });
             }
         });

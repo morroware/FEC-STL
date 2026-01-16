@@ -544,6 +544,9 @@ $user = getCurrentUser();
         // Settings from PHP
         window.ALLOWED_EXTENSIONS = <?= json_encode(getAllowedExtensions()) ?>;
         window.MAX_FILE_SIZE_MB = <?= (int)setting('max_file_size', 50) ?>;
+
+        // 3D Viewer settings from admin panel
+        <?= getViewerSettingsJS() ?>
         window.MAX_FILES_PER_MODEL = <?= (int)setting('max_files_per_model', 10) ?>;
 
         // Multi-file upload with preview

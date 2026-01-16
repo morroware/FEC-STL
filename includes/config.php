@@ -158,3 +158,110 @@ function isCurrentUserApproved(): bool {
     require_once __DIR__ . '/db.php';
     return isUserApproved($_SESSION['user_id']);
 }
+
+/**
+ * Convert hex color to integer for Three.js
+ */
+function hexToInt(string $hex): int {
+    return hexdec(ltrim($hex, '#'));
+}
+
+/**
+ * Get 3D Viewer settings as JavaScript object
+ * Call this in <script> tags to initialize window.VIEWER_SETTINGS
+ */
+function getViewerSettingsJS(): string {
+    // Get all viewer settings
+    $backgroundColor = hexToInt(setting('viewer_background_color', '#0a0a0f'));
+    $enableShadows = setting('viewer_enable_shadows', true);
+    $shadowQuality = setting('viewer_shadow_quality', 2048);
+    $enableFog = setting('viewer_enable_fog', false);
+    $fogColor = hexToInt(setting('viewer_fog_color', '#000000'));
+    $fogDensity = setting('viewer_fog_density', 0.0005);
+    $toneMappingExposure = setting('viewer_tone_mapping_exposure', 1.2);
+
+    // Lighting
+    $ambientLightColor = hexToInt(setting('viewer_ambient_light_color', '#ffffff'));
+    $ambientLightIntensity = setting('viewer_ambient_light_intensity', 0.6);
+    $hemisphereEnabled = setting('viewer_hemisphere_light_enabled', true);
+    $hemisphereSkyColor = hexToInt(setting('viewer_hemisphere_sky_color', '#00f0ff'));
+    $hemisphereGroundColor = hexToInt(setting('viewer_hemisphere_ground_color', '#ff00aa'));
+    $hemisphereIntensity = setting('viewer_hemisphere_intensity', 0.3);
+    $keyLightColor = hexToInt(setting('viewer_key_light_color', '#ffffff'));
+    $keyLightIntensity = setting('viewer_key_light_intensity', 0.7);
+    $fillLightColor = hexToInt(setting('viewer_fill_light_color', '#00f0ff'));
+    $fillLightIntensity = setting('viewer_fill_light_intensity', 0.4);
+    $rimLightColor = hexToInt(setting('viewer_rim_light_color', '#ff00aa'));
+    $rimLightIntensity = setting('viewer_rim_light_intensity', 0.3);
+    $topLightIntensity = setting('viewer_top_light_intensity', 0.3);
+    $pointLight1Enabled = setting('viewer_point_light_1_enabled', true);
+    $pointLight1Color = hexToInt(setting('viewer_point_light_1_color', '#00f0ff'));
+    $pointLight1Intensity = setting('viewer_point_light_1_intensity', 0.5);
+    $pointLight2Enabled = setting('viewer_point_light_2_enabled', true);
+    $pointLight2Color = hexToInt(setting('viewer_point_light_2_color', '#ff00aa'));
+    $pointLight2Intensity = setting('viewer_point_light_2_intensity', 0.3);
+
+    // Material
+    $materialMetalness = setting('viewer_material_metalness', 0.1);
+    $materialRoughness = setting('viewer_material_roughness', 0.5);
+    $materialEnvIntensity = setting('viewer_material_env_intensity', 0.5);
+
+    // Environment
+    $envTopColor = hexToInt(setting('viewer_env_top_color', '#0a0a1a'));
+    $envBottomColor = hexToInt(setting('viewer_env_bottom_color', '#000000'));
+
+    // Legacy settings
+    $defaultColor = setting('default_model_color', '#00ffff');
+    $autoRotate = setting('enable_auto_rotate', false) ? 'true' : 'false';
+    $showWireframeToggle = setting('enable_wireframe_toggle', true) ? 'true' : 'false';
+    $showGrid = setting('enable_grid', true) ? 'true' : 'false';
+
+    return <<<JS
+window.VIEWER_SETTINGS = {
+    // Legacy settings (for compatibility)
+    defaultColor: '{$defaultColor}',
+    autoRotate: {$autoRotate},
+    showWireframeToggle: {$showWireframeToggle},
+    showGrid: {$showGrid},
+
+    // Scene & Background
+    backgroundColor: 0x{$backgroundColor},
+    enableShadows: {$enableShadows},
+    shadowQuality: {$shadowQuality},
+    enableFog: {$enableFog},
+    fogColor: 0x{$fogColor},
+    fogDensity: {$fogDensity},
+    toneMappingExposure: {$toneMappingExposure},
+
+    // Lighting
+    ambientLightColor: 0x{$ambientLightColor},
+    ambientLightIntensity: {$ambientLightIntensity},
+    hemisphereEnabled: {$hemisphereEnabled},
+    hemisphereSkyColor: 0x{$hemisphereSkyColor},
+    hemisphereGroundColor: 0x{$hemisphereGroundColor},
+    hemisphereIntensity: {$hemisphereIntensity},
+    keyLightColor: 0x{$keyLightColor},
+    keyLightIntensity: {$keyLightIntensity},
+    fillLightColor: 0x{$fillLightColor},
+    fillLightIntensity: {$fillLightIntensity},
+    rimLightColor: 0x{$rimLightColor},
+    rimLightIntensity: {$rimLightIntensity},
+    topLightIntensity: {$topLightIntensity},
+    pointLight1Enabled: {$pointLight1Enabled},
+    pointLight1Color: 0x{$pointLight1Color},
+    pointLight1Intensity: {$pointLight1Intensity},
+    pointLight2Enabled: {$pointLight2Enabled},
+    pointLight2Color: 0x{$pointLight2Color},
+    pointLight2Intensity: {$pointLight2Intensity},
+
+    // Material
+    materialMetalness: {$materialMetalness},
+    materialRoughness: {$materialRoughness},
+    materialEnvIntensity: {$materialEnvIntensity},
+
+    // Environment
+    envTopColor: 0x{$envTopColor},
+    envBottomColor: 0x{$envBottomColor}
+};
+JS;
+}

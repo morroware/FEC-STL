@@ -785,12 +785,7 @@ foreach ($relatedModels as $index => $rm) {
     <script src="js/app.js"></script>
     <script>
         // 3D Viewer settings from admin panel
-        window.VIEWER_SETTINGS = {
-            defaultColor: '<?= setting('default_model_color', '#00f0ff') ?>',
-            autoRotate: <?= setting('enable_auto_rotate', false) ? 'true' : 'false' ?>,
-            showWireframeToggle: <?= setting('enable_wireframe_toggle', true) ? 'true' : 'false' ?>,
-            showGrid: <?= setting('enable_grid', true) ? 'true' : 'false' ?>
-        };
+        <?= getViewerSettingsJS() ?>
 
         // Unified Gallery Controller
         const GalleryController = {

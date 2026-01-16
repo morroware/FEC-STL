@@ -395,5 +395,9 @@ foreach ($trendingModels as $index => $model) {
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
+    <script>
+        // 3D Viewer settings from admin panel
+        <?= getViewerSettingsJS() ?>
+    </script>
 </body>
 </html>

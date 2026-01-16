@@ -1877,6 +1877,47 @@ function getDefaultSettings(): array {
         'enable_auto_rotate' => false,
         'enable_wireframe_toggle' => true,
         'enable_grid' => true,
+
+        // 3D Viewer - Background & Scene
+        'viewer_background_color' => '#0a0a0f',
+        'viewer_enable_shadows' => true,
+        'viewer_shadow_quality' => 2048,
+        'viewer_enable_fog' => false,
+        'viewer_fog_color' => '#000000',
+        'viewer_fog_density' => 0.0005,
+
+        // 3D Viewer - Lighting
+        'viewer_ambient_light_color' => '#ffffff',
+        'viewer_ambient_light_intensity' => 0.6,
+        'viewer_hemisphere_light_enabled' => true,
+        'viewer_hemisphere_sky_color' => '#00f0ff',
+        'viewer_hemisphere_ground_color' => '#ff00aa',
+        'viewer_hemisphere_intensity' => 0.3,
+        'viewer_key_light_color' => '#ffffff',
+        'viewer_key_light_intensity' => 0.7,
+        'viewer_fill_light_color' => '#00f0ff',
+        'viewer_fill_light_intensity' => 0.4,
+        'viewer_rim_light_color' => '#ff00aa',
+        'viewer_rim_light_intensity' => 0.3,
+        'viewer_top_light_intensity' => 0.3,
+        'viewer_point_light_1_enabled' => true,
+        'viewer_point_light_1_color' => '#00f0ff',
+        'viewer_point_light_1_intensity' => 0.5,
+        'viewer_point_light_2_enabled' => true,
+        'viewer_point_light_2_color' => '#ff00aa',
+        'viewer_point_light_2_intensity' => 0.3,
+
+        // 3D Viewer - Material Properties
+        'viewer_material_metalness' => 0.1,
+        'viewer_material_roughness' => 0.5,
+        'viewer_material_env_intensity' => 0.5,
+
+        // 3D Viewer - Environment
+        'viewer_env_top_color' => '#0a0a1a',
+        'viewer_env_bottom_color' => '#000000',
+
+        // 3D Viewer - Tone Mapping
+        'viewer_tone_mapping_exposure' => 1.2,
     ];
 }
 
@@ -2008,6 +2049,55 @@ function getSettingsSchema(): array {
                 'enable_auto_rotate' => ['label' => 'Auto-Rotate by Default', 'type' => 'toggle', 'description' => 'Enable auto-rotation on model viewer'],
                 'enable_wireframe_toggle' => ['label' => 'Wireframe Toggle', 'type' => 'toggle', 'description' => 'Show wireframe toggle button'],
                 'enable_grid' => ['label' => 'Show Grid', 'type' => 'toggle', 'description' => 'Show grid in 3D viewer by default'],
+            ]
+        ],
+        'viewer_scene' => [
+            'label' => '3D Viewer - Scene & Shadows',
+            'icon' => 'fa-image',
+            'settings' => [
+                'viewer_background_color' => ['label' => 'Background Color', 'type' => 'color', 'description' => 'Background color for the 3D viewer'],
+                'viewer_enable_shadows' => ['label' => 'Enable Shadows', 'type' => 'toggle', 'description' => 'Enable shadow rendering'],
+                'viewer_shadow_quality' => ['label' => 'Shadow Quality', 'type' => 'select', 'options' => [512 => 'Low (512)', 1024 => 'Medium (1024)', 2048 => 'High (2048)', 4096 => 'Ultra (4096)'], 'description' => 'Shadow map resolution (higher = better quality, slower performance)'],
+                'viewer_enable_fog' => ['label' => 'Enable Fog', 'type' => 'toggle', 'description' => 'Enable atmospheric fog effect'],
+                'viewer_fog_color' => ['label' => 'Fog Color', 'type' => 'color', 'description' => 'Fog color (when fog is enabled)'],
+                'viewer_fog_density' => ['label' => 'Fog Density', 'type' => 'number', 'min' => 0, 'max' => 0.01, 'step' => 0.0001, 'description' => 'Fog density (0.0001 to 0.01)'],
+                'viewer_tone_mapping_exposure' => ['label' => 'Tone Mapping Exposure', 'type' => 'number', 'min' => 0.1, 'max' => 3.0, 'step' => 0.1, 'description' => 'Overall brightness (0.1 to 3.0)'],
+            ]
+        ],
+        'viewer_lighting' => [
+            'label' => '3D Viewer - Lighting',
+            'icon' => 'fa-lightbulb',
+            'settings' => [
+                'viewer_ambient_light_color' => ['label' => 'Ambient Light Color', 'type' => 'color', 'description' => 'Global ambient light color'],
+                'viewer_ambient_light_intensity' => ['label' => 'Ambient Light Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'Ambient light brightness (0 to 2)'],
+                'viewer_hemisphere_light_enabled' => ['label' => 'Enable Hemisphere Light', 'type' => 'toggle', 'description' => 'Enable sky/ground gradient lighting'],
+                'viewer_hemisphere_sky_color' => ['label' => 'Hemisphere Sky Color', 'type' => 'color', 'description' => 'Sky color for hemisphere light'],
+                'viewer_hemisphere_ground_color' => ['label' => 'Hemisphere Ground Color', 'type' => 'color', 'description' => 'Ground color for hemisphere light'],
+                'viewer_hemisphere_intensity' => ['label' => 'Hemisphere Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'Hemisphere light brightness (0 to 2)'],
+                'viewer_key_light_color' => ['label' => 'Key Light Color', 'type' => 'color', 'description' => 'Main directional light color'],
+                'viewer_key_light_intensity' => ['label' => 'Key Light Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'Main light brightness (0 to 2)'],
+                'viewer_fill_light_color' => ['label' => 'Fill Light Color', 'type' => 'color', 'description' => 'Secondary fill light color'],
+                'viewer_fill_light_intensity' => ['label' => 'Fill Light Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'Fill light brightness (0 to 2)'],
+                'viewer_rim_light_color' => ['label' => 'Rim Light Color', 'type' => 'color', 'description' => 'Edge/rim light color'],
+                'viewer_rim_light_intensity' => ['label' => 'Rim Light Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'Rim light brightness (0 to 2)'],
+                'viewer_top_light_intensity' => ['label' => 'Top Light Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'Top light brightness (0 to 2)'],
+                'viewer_point_light_1_enabled' => ['label' => 'Enable Point Light 1', 'type' => 'toggle', 'description' => 'Enable first accent point light'],
+                'viewer_point_light_1_color' => ['label' => 'Point Light 1 Color', 'type' => 'color', 'description' => 'First point light color'],
+                'viewer_point_light_1_intensity' => ['label' => 'Point Light 1 Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'First point light brightness (0 to 2)'],
+                'viewer_point_light_2_enabled' => ['label' => 'Enable Point Light 2', 'type' => 'toggle', 'description' => 'Enable second accent point light'],
+                'viewer_point_light_2_color' => ['label' => 'Point Light 2 Color', 'type' => 'color', 'description' => 'Second point light color'],
+                'viewer_point_light_2_intensity' => ['label' => 'Point Light 2 Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'Second point light brightness (0 to 2)'],
+            ]
+        ],
+        'viewer_material' => [
+            'label' => '3D Viewer - Materials',
+            'icon' => 'fa-paint-brush',
+            'settings' => [
+                'viewer_material_metalness' => ['label' => 'Material Metalness', 'type' => 'number', 'min' => 0, 'max' => 1, 'step' => 0.1, 'description' => 'How metallic materials appear (0 = non-metal, 1 = full metal)'],
+                'viewer_material_roughness' => ['label' => 'Material Roughness', 'type' => 'number', 'min' => 0, 'max' => 1, 'step' => 0.1, 'description' => 'Surface roughness (0 = glossy, 1 = rough)'],
+                'viewer_material_env_intensity' => ['label' => 'Environment Intensity', 'type' => 'number', 'min' => 0, 'max' => 2, 'step' => 0.1, 'description' => 'Strength of environment reflections (0 to 2)'],
+                'viewer_env_top_color' => ['label' => 'Environment Top Color', 'type' => 'color', 'description' => 'Top color for environment gradient'],
+                'viewer_env_bottom_color' => ['label' => 'Environment Bottom Color', 'type' => 'color', 'description' => 'Bottom color for environment gradient'],
             ]
         ],
     ];

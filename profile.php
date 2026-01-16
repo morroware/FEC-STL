@@ -556,6 +556,10 @@ $currentUser = isLoggedIn() ? getCurrentUser() : null;
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
     <script>
+        // 3D Viewer settings from admin panel
+        <?= getViewerSettingsJS() ?>
+    </script>
+    <script>
         function showTab(tab) {
             // Hide all tabs
             document.getElementById('models-tab').style.display = 'none';
