@@ -16,6 +16,7 @@ if (isMaintenanceMode() && !isAdmin()) {
 // Pagination for recent models
 $page = max(1, intval($_GET['page'] ?? 1));
 $limit = (int)setting('items_per_page', 12);
+if ($limit <= 0) $limit = 12; // Prevent division by zero
 
 $categories = getCategories();
 

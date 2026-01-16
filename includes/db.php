@@ -888,7 +888,11 @@ if (USE_MYSQL) {
             while ($row = $result->fetch_assoc()) {
                 $value = $row['setting_value'] ?? null;
                 $type = $row['setting_type'] ?? 'string';
-                $settings[$row['setting_key']] = castSettingValue($value, $type);
+                $castValue = castSettingValue($value, $type);
+                // Only include non-null values so defaults aren't overridden with null
+                if ($castValue !== null) {
+                    $settings[$row['setting_key']] = $castValue;
+                }
             }
 
             return array_merge(getDefaultSettings(), $settings);
