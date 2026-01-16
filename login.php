@@ -8,31 +8,47 @@ require_once __DIR__ . '/includes/db.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    redirect('index.php');
+    // Check if user is approved
+    if (!isUserApproved($_SESSION['user_id']) && !($_SESSION['is_admin'] ?? false)) {
+        // User is pending approval - show pending page
+        $pendingApproval = true;
+    } else {
+        redirect('index.php');
+    }
 }
 
 $showRegister = isset($_GET['register']);
+$allowRegistration = setting('allow_registration', true);
+$requireApproval = setting('require_admin_approval', false);
+$pendingApproval = $pendingApproval ?? false;
 $error = '';
 $success = '';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['form_action'] ?? '';
-    
+
     if ($action === 'login') {
         $username = $_POST['username'] ?? '';
         $password = $_POST['password'] ?? '';
-        
+
         if (!$username || !$password) {
             $error = 'Please fill in all fields';
         } else {
             $user = authenticateUser($username, $password);
             if ($user) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['is_admin'] = $user['is_admin'] ?? false;
-                
-                $redirect = $_GET['redirect'] ?? 'index.php';
-                redirect($redirect);
+                // Check if user is approved
+                if (!isUserApproved($user['id']) && !($user['is_admin'] ?? false)) {
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['is_admin'] = false;
+                    $pendingApproval = true;
+                } else {
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['is_admin'] = $user['is_admin'] ?? false;
+
+                    $redirect = $_GET['redirect'] ?? 'index.php';
+                    redirect($redirect);
+                }
             } else {
                 $error = 'Invalid username or password';
             }
@@ -42,40 +58,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
-        
-        // Validation
-        if (!$username || !$email || !$password) {
-            $error = 'Please fill in all fields';
-        } elseif (strlen($username) < 3 || strlen($username) > 20) {
-            $error = 'Username must be 3-20 characters';
-        } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
-            $error = 'Username can only contain letters, numbers, and underscores';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Invalid email address';
-        } elseif (strlen($password) < 6) {
-            $error = 'Password must be at least 6 characters';
-        } elseif ($password !== $confirmPassword) {
-            $error = 'Passwords do not match';
-        } elseif (getUserByUsername($username)) {
-            $error = 'Username already taken';
-        } elseif (getUserByEmail($email)) {
-            $error = 'Email already registered';
-        } else {
-            $userId = createUser([
-                'username' => $username,
-                'email' => $email,
-                'password' => $password
-            ]);
-            
-            if ($userId) {
-                $_SESSION['user_id'] = $userId;
-                $_SESSION['is_admin'] = false;
-                redirect('index.php');
+        $inviteCode = trim($_POST['invite_code'] ?? '');
+
+        // Check if registration is allowed (either public or via invite)
+        $hasValidInvite = false;
+        $inviteError = '';
+
+        if ($inviteCode) {
+            $inviteResult = validateInviteCode($inviteCode);
+            if ($inviteResult['valid']) {
+                $hasValidInvite = true;
             } else {
-                $error = 'Failed to create account. Please try again.';
+                $inviteError = $inviteResult['error'];
             }
         }
-        
+
+        if (!$allowRegistration && !$hasValidInvite) {
+            if ($inviteCode && $inviteError) {
+                $error = $inviteError;
+            } else {
+                $error = 'Registration requires an invite code';
+            }
+        } elseif ($inviteCode && !$hasValidInvite) {
+            $error = $inviteError;
+        } else {
+            // Validation
+            if (!$username || !$email || !$password) {
+                $error = 'Please fill in all fields';
+            } elseif (strlen($username) < 3 || strlen($username) > 20) {
+                $error = 'Username must be 3-20 characters';
+            } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
+                $error = 'Username can only contain letters, numbers, and underscores';
+            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $error = 'Invalid email address';
+            } elseif (strlen($password) < 6) {
+                $error = 'Password must be at least 6 characters';
+            } elseif ($password !== $confirmPassword) {
+                $error = 'Passwords do not match';
+            } elseif (getUserByUsername($username)) {
+                $error = 'Username already taken';
+            } elseif (getUserByEmail($email)) {
+                $error = 'Email already registered';
+            } else {
+                // Determine if approval is needed (invite users bypass approval)
+                $needsApproval = $requireApproval && !$hasValidInvite;
+
+                $userId = createUser([
+                    'username' => $username,
+                    'email' => $email,
+                    'password' => $password,
+                    'needs_approval' => $needsApproval
+                ]);
+
+                if ($userId) {
+                    // Mark invite as used
+                    if ($hasValidInvite) {
+                        useInviteCode($inviteCode);
+                    }
+
+                    $_SESSION['user_id'] = $userId;
+                    $_SESSION['is_admin'] = false;
+
+                    if ($needsApproval) {
+                        $pendingApproval = true;
+                    } else {
+                        redirect('index.php');
+                    }
+                } else {
+                    $error = 'Failed to create account. Please try again.';
+                }
+            }
+        }
+
         $showRegister = true;
     }
 }
@@ -85,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $showRegister ? 'Create Account' : 'Sign In' ?> - <?= SITE_NAME ?></title>
+    <title><?= $showRegister ? 'Create Account' : 'Sign In' ?> - <?= getSiteName() ?></title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -99,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="container">
             <a href="index.php" class="logo">
                 <div class="logo-icon"><i class="fas fa-cube"></i></div>
-                <span><?= SITE_NAME ?></span>
+                <span><?= getSiteName() ?></span>
             </a>
             
             <div class="nav-links">
@@ -117,6 +171,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="page-content">
         <div class="auth-container">
+            <?php if ($pendingApproval): ?>
+                <!-- Pending Approval Screen -->
+                <div class="auth-card" style="text-align: center;">
+                    <div style="margin-bottom: 24px;">
+                        <i class="fas fa-user-clock" style="font-size: 4rem; color: var(--neon-yellow);"></i>
+                    </div>
+                    <h1 class="text-gradient">Pending Approval</h1>
+                    <p style="color: var(--text-secondary); margin: 16px 0 24px;">
+                        Your account has been created and is waiting for administrator approval.<br>
+                        You'll be able to access the site once your account is approved.
+                    </p>
+                    <a href="logout.php" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Sign Out
+                    </a>
+                </div>
+            <?php else: ?>
             <div class="auth-card">
                 <div class="auth-header">
                     <h1 class="text-gradient"><?= $showRegister ? 'Join the Community' : 'Welcome Back' ?></h1>
@@ -128,9 +198,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="auth-tab <?= !$showRegister ? 'active' : '' ?>" onclick="window.location='login.php'">
                         Sign In
                     </div>
+                    <?php if ($allowRegistration): ?>
                     <div class="auth-tab <?= $showRegister ? 'active' : '' ?>" onclick="window.location='login.php?register=1'">
                         Register
                     </div>
+                    <?php else: ?>
+                    <div class="auth-tab <?= $showRegister ? 'active' : '' ?>" onclick="window.location='login.php?register=1'">
+                        Invite
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <?php if ($error): ?>
@@ -148,9 +224,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <?php if ($showRegister): ?>
-                    <!-- Register Form -->
+                    <!-- Register Form (with optional invite code) -->
                     <form method="POST" action="login.php?register=1">
                         <input type="hidden" name="form_action" value="register">
+
+                        <?php if (!$allowRegistration): ?>
+                            <div class="form-group">
+                                <label class="form-label required">Invite Code</label>
+                                <input type="text" name="invite_code" class="form-input"
+                                       placeholder="Enter your invite code"
+                                       value="<?= sanitize($_POST['invite_code'] ?? $_GET['code'] ?? '') ?>"
+                                       style="text-transform: uppercase; letter-spacing: 2px; font-family: monospace;"
+                                       required>
+                                <div class="form-hint">Registration requires an invite code from an administrator</div>
+                            </div>
+                            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 20px 0;">
+                        <?php else: ?>
+                            <div class="form-group">
+                                <label class="form-label">Invite Code <span style="color: var(--text-muted);">(optional)</span></label>
+                                <input type="text" name="invite_code" class="form-input"
+                                       placeholder="Have an invite code?"
+                                       value="<?= sanitize($_POST['invite_code'] ?? $_GET['code'] ?? '') ?>"
+                                       style="text-transform: uppercase; letter-spacing: 2px; font-family: monospace;">
+                                <div class="form-hint">Enter invite code if you have one (skip admin approval)</div>
+                            </div>
+                        <?php endif; ?>
                         
                         <div class="form-group">
                             <label class="form-label required">Username</label>
@@ -186,7 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="fas fa-user-plus"></i> Create Account
                         </button>
                     </form>
-                    
+
                     <div class="auth-footer">
                         Already have an account? <a href="login.php">Sign in</a>
                     </div>
@@ -217,9 +315,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         Don't have an account? <a href="login.php?register=1">Create one</a>
                     </div>
                 <?php endif; ?>
-
-            
             </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -232,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a href="browse.php">Browse</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
+                    &copy; <?= date('Y') ?> <?= getSiteName() ?>. A community-driven platform.
                 </div>
             </div>
         </div>

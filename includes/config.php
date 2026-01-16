@@ -87,3 +87,74 @@ function csrfToken(): string {
 function verifyCsrf(string $token): bool {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
+
+/**
+ * Settings Helper - Get a site setting with fallback to default
+ * Pass $reset = true to clear the cache (after saving settings)
+ */
+function setting(string $key, $default = null, bool $reset = false) {
+    static $settings = null;
+    if ($reset) {
+        $settings = null;
+        return null;
+    }
+    if ($settings === null) {
+        require_once __DIR__ . '/db.php';
+        $settings = getSettings();
+    }
+    return $settings[$key] ?? $default;
+}
+
+/**
+ * Clear the settings cache (call after saving settings)
+ */
+function clearSettingsCache(): void {
+    setting('', null, true);
+}
+
+/**
+ * Check if site is in maintenance mode
+ */
+function isMaintenanceMode(): bool {
+    return setting('maintenance_mode', false) === true;
+}
+
+/**
+ * Get site name from settings
+ */
+function getSiteName(): string {
+    return setting('site_name', SITE_NAME);
+}
+
+/**
+ * Get max file size from settings (in bytes)
+ */
+function getMaxFileSize(): int {
+    $mb = setting('max_file_size', 50);
+    return $mb * 1024 * 1024;
+}
+
+/**
+ * Get allowed file extensions from settings
+ */
+function getAllowedExtensions(): array {
+    $extensions = setting('allowed_extensions', 'stl,obj');
+    return array_map('trim', explode(',', strtolower($extensions)));
+}
+
+/**
+ * Check if a feature is enabled
+ */
+function isFeatureEnabled(string $feature): bool {
+    return setting('enable_' . $feature, true) === true;
+}
+
+/**
+ * Check if current user needs approval
+ */
+function isCurrentUserApproved(): bool {
+    if (!isLoggedIn()) return false;
+    if (isAdmin()) return true;
+    require_once __DIR__ . '/db.php';
+    return isUserApproved($_SESSION['user_id']);
+}

@@ -116,6 +116,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Failed to delete model';
             }
             break;
+
+        case 'save_settings':
+            $settingsToSave = [];
+            $schema = getSettingsSchema();
+
+            foreach ($schema as $category => $categoryData) {
+                foreach ($categoryData['settings'] as $key => $config) {
+                    if ($config['type'] === 'toggle') {
+                        // Checkboxes are only present when checked
+                        $settingsToSave[$key] = isset($_POST[$key]);
+                    } elseif ($config['type'] === 'number') {
+                        $settingsToSave[$key] = (int)($_POST[$key] ?? 0);
+                    } else {
+                        if (isset($_POST[$key])) {
+                            $settingsToSave[$key] = $_POST[$key];
+                        }
+                    }
+                }
+            }
+
+            if (setSettings($settingsToSave)) {
+                clearSettingsCache(); // Clear cache so new values are loaded
+                $success = 'Settings saved successfully';
+            } else {
+                $error = 'Failed to save settings';
+            }
+            break;
+
+        case 'approve_user':
+            $id = $_POST['id'] ?? '';
+            if (approveUser($id)) {
+                $success = 'User approved successfully';
+            } else {
+                $error = 'Failed to approve user';
+            }
+            break;
+
+        case 'reject_user':
+            $id = $_POST['id'] ?? '';
+            if (rejectUser($id)) {
+                $success = 'User rejected and removed';
+            } else {
+                $error = 'Failed to reject user';
+            }
+            break;
+
+        case 'create_invite':
+            $maxUses = (int)($_POST['max_uses'] ?? 1);
+            $expiresDays = (int)($_POST['expires_days'] ?? 0);
+            $note = trim($_POST['note'] ?? '');
+
+            $code = createInvite([
+                'created_by' => $_SESSION['user_id'],
+                'max_uses' => $maxUses,
+                'expires_days' => $expiresDays > 0 ? $expiresDays : null,
+                'note' => $note
+            ]);
+
+            if ($code) {
+                $success = "Invite code created: <strong>$code</strong>";
+            } else {
+                $error = 'Failed to create invite code';
+            }
+            break;
+
+        case 'toggle_invite':
+            $id = $_POST['id'] ?? '';
+            if (toggleInvite($id)) {
+                $success = 'Invite status updated';
+            } else {
+                $error = 'Failed to update invite';
+            }
+            break;
+
+        case 'delete_invite':
+            $id = $_POST['id'] ?? '';
+            if (deleteInvite($id)) {
+                $success = 'Invite deleted';
+            } else {
+                $error = 'Failed to delete invite';
+            }
+            break;
     }
 }
 
@@ -134,7 +216,7 @@ $faIcons = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - <?= SITE_NAME ?></title>
+    <title>Admin Dashboard - <?= getSiteName() ?></title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -148,7 +230,7 @@ $faIcons = [
         <div class="container">
             <a href="index.php" class="logo">
                 <div class="logo-icon"><i class="fas fa-cube"></i></div>
-                <span><?= SITE_NAME ?></span>
+                <span><?= getSiteName() ?></span>
             </a>
             
             <div class="nav-links">
@@ -203,6 +285,30 @@ $faIcons = [
                         <li>
                             <a href="admin.php?section=models" class="<?= $section === 'models' ? 'active' : '' ?>">
                                 <i class="fas fa-cube"></i> Models
+                            </a>
+                        </li>
+                        <li>
+                            <a href="admin.php?section=settings" class="<?= $section === 'settings' ? 'active' : '' ?>">
+                                <i class="fas fa-sliders-h"></i> Settings
+                            </a>
+                        </li>
+                        <?php
+                        $pendingUsers = getPendingUsers();
+                        $pendingCount = count($pendingUsers);
+                        ?>
+                        <?php if (setting('require_admin_approval', false) || $pendingCount > 0): ?>
+                        <li>
+                            <a href="admin.php?section=pending" class="<?= $section === 'pending' ? 'active' : '' ?>">
+                                <i class="fas fa-user-clock"></i> Pending
+                                <?php if ($pendingCount > 0): ?>
+                                    <span class="badge"><?= $pendingCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li>
+                            <a href="admin.php?section=invites" class="<?= $section === 'invites' ? 'active' : '' ?>">
+                                <i class="fas fa-ticket-alt"></i> Invites
                             </a>
                         </li>
                     </ul>
@@ -489,6 +595,285 @@ $faIcons = [
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+
+                    <?php elseif ($section === 'settings'): ?>
+                        <!-- Settings Management -->
+                        <?php
+                        $currentSettings = getSettings();
+                        $settingsSchema = getSettingsSchema();
+                        ?>
+                        <div class="admin-header">
+                            <h2>Settings</h2>
+                        </div>
+
+                        <form method="POST" action="admin.php?section=settings" class="settings-form">
+                            <input type="hidden" name="action" value="save_settings">
+
+                            <div class="settings-tabs">
+                                <?php $first = true; foreach ($settingsSchema as $catKey => $category): ?>
+                                    <button type="button" class="settings-tab <?= $first ? 'active' : '' ?>" data-tab="<?= $catKey ?>">
+                                        <i class="fas <?= $category['icon'] ?>"></i>
+                                        <span><?= sanitize($category['label']) ?></span>
+                                    </button>
+                                <?php $first = false; endforeach; ?>
+                            </div>
+
+                            <?php $first = true; foreach ($settingsSchema as $catKey => $category): ?>
+                                <div class="settings-panel <?= $first ? 'active' : '' ?>" id="settings-<?= $catKey ?>">
+                                    <div class="settings-panel-header">
+                                        <i class="fas <?= $category['icon'] ?>"></i>
+                                        <h3><?= sanitize($category['label']) ?></h3>
+                                    </div>
+
+                                    <div class="settings-grid">
+                                        <?php foreach ($category['settings'] as $key => $config): ?>
+                                            <div class="setting-item">
+                                                <div class="setting-label">
+                                                    <label for="<?= $key ?>"><?= sanitize($config['label']) ?></label>
+                                                    <span class="setting-description"><?= sanitize($config['description']) ?></span>
+                                                </div>
+                                                <div class="setting-input">
+                                                    <?php
+                                                    $value = $currentSettings[$key] ?? '';
+                                                    switch ($config['type']):
+                                                        case 'toggle': ?>
+                                                            <label class="toggle-switch">
+                                                                <input type="checkbox" name="<?= $key ?>" id="<?= $key ?>" <?= $value ? 'checked' : '' ?>>
+                                                                <span class="toggle-slider"></span>
+                                                            </label>
+                                                        <?php break;
+                                                        case 'text':
+                                                        case 'email': ?>
+                                                            <input type="<?= $config['type'] ?>" name="<?= $key ?>" id="<?= $key ?>"
+                                                                   class="form-input" value="<?= sanitize($value) ?>">
+                                                        <?php break;
+                                                        case 'textarea': ?>
+                                                            <textarea name="<?= $key ?>" id="<?= $key ?>"
+                                                                      class="form-textarea" rows="2"><?= sanitize($value) ?></textarea>
+                                                        <?php break;
+                                                        case 'number': ?>
+                                                            <input type="number" name="<?= $key ?>" id="<?= $key ?>"
+                                                                   class="form-input" value="<?= (int)$value ?>"
+                                                                   <?= isset($config['min']) ? 'min="'.$config['min'].'"' : '' ?>
+                                                                   <?= isset($config['max']) ? 'max="'.$config['max'].'"' : '' ?>>
+                                                        <?php break;
+                                                        case 'color': ?>
+                                                            <input type="color" name="<?= $key ?>" id="<?= $key ?>"
+                                                                   class="form-color" value="<?= sanitize($value) ?>">
+                                                        <?php break;
+                                                        case 'select': ?>
+                                                            <select name="<?= $key ?>" id="<?= $key ?>" class="form-select">
+                                                                <?php
+                                                                $options = $config['options'];
+                                                                if (is_array($options) && !array_keys($options) !== range(0, count($options) - 1)):
+                                                                    // Associative array
+                                                                    foreach ($options as $optVal => $optLabel): ?>
+                                                                        <option value="<?= is_int($optVal) ? $optVal : sanitize($optVal) ?>"
+                                                                            <?= $value == $optVal ? 'selected' : '' ?>>
+                                                                            <?= sanitize($optLabel) ?>
+                                                                        </option>
+                                                                    <?php endforeach;
+                                                                else:
+                                                                    // Simple array
+                                                                    foreach ($options as $opt): ?>
+                                                                        <option value="<?= $opt ?>" <?= $value == $opt ? 'selected' : '' ?>>
+                                                                            <?= $opt ?>
+                                                                        </option>
+                                                                    <?php endforeach;
+                                                                endif; ?>
+                                                            </select>
+                                                        <?php break;
+                                                    endswitch; ?>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php $first = false; endforeach; ?>
+
+                            <div class="settings-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Settings
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="location.reload()">
+                                    <i class="fas fa-undo"></i> Reset
+                                </button>
+                            </div>
+                        </form>
+
+                    <?php elseif ($section === 'pending'): ?>
+                        <!-- Pending Users -->
+                        <?php $pendingUsers = getPendingUsers(); ?>
+                        <div class="admin-header">
+                            <h2>Pending Users</h2>
+                            <span class="badge" style="font-size: 1rem; padding: 8px 16px;">
+                                <?= count($pendingUsers) ?> awaiting approval
+                            </span>
+                        </div>
+
+                        <?php if (empty($pendingUsers)): ?>
+                            <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                                <i class="fas fa-user-check" style="font-size: 3rem; color: var(--neon-green); margin-bottom: 16px;"></i>
+                                <h3>No Pending Users</h3>
+                                <p style="color: var(--text-muted);">All user registrations have been processed.</p>
+                            </div>
+                        <?php else: ?>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Registered</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($pendingUsers as $user): ?>
+                                        <tr>
+                                            <td>
+                                                <div style="display: flex; align-items: center; gap: 10px;">
+                                                    <div class="author-avatar">
+                                                        <?= strtoupper(substr($user['username'], 0, 1)) ?>
+                                                    </div>
+                                                    <?= sanitize($user['username']) ?>
+                                                </div>
+                                            </td>
+                                            <td><?= sanitize($user['email']) ?></td>
+                                            <td><?= timeAgo($user['created_at']) ?></td>
+                                            <td class="actions">
+                                                <form method="POST" style="display: inline;">
+                                                    <input type="hidden" name="action" value="approve_user">
+                                                    <input type="hidden" name="id" value="<?= $user['id'] ?>">
+                                                    <button type="submit" class="btn btn-primary btn-sm" title="Approve">
+                                                        <i class="fas fa-check"></i> Approve
+                                                    </button>
+                                                </form>
+                                                <form method="POST" style="display: inline;"
+                                                      onsubmit="return confirm('Reject and delete this user?');">
+                                                    <input type="hidden" name="action" value="reject_user">
+                                                    <input type="hidden" name="id" value="<?= $user['id'] ?>">
+                                                    <button type="submit" class="btn btn-danger btn-sm" title="Reject">
+                                                        <i class="fas fa-times"></i> Reject
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
+
+                        <div class="card" style="margin-top: 24px; padding: 20px;">
+                            <h4 style="margin-bottom: 8px;"><i class="fas fa-info-circle"></i> About Admin Approval</h4>
+                            <p style="color: var(--text-secondary); margin: 0;">
+                                When "Require Admin Approval" is enabled in Settings, new users must be approved before they can access the site.
+                                Users with valid invite codes bypass the approval requirement.
+                            </p>
+                        </div>
+
+                    <?php elseif ($section === 'invites'): ?>
+                        <!-- Invite Codes -->
+                        <?php $invites = getInvites(); ?>
+                        <div class="admin-header">
+                            <h2>Invite Codes</h2>
+                            <button class="btn btn-primary btn-sm" onclick="Modal.show('create-invite-modal')">
+                                <i class="fas fa-plus"></i> Create Invite
+                            </button>
+                        </div>
+
+                        <div class="card" style="margin-bottom: 24px; padding: 16px; background: var(--bg-elevated);">
+                            <p style="color: var(--text-secondary); margin: 0;">
+                                <i class="fas fa-lightbulb" style="color: var(--neon-yellow);"></i>
+                                Invite codes allow users to register even when public registration is disabled.
+                                Share codes privately with people you want to invite.
+                            </p>
+                        </div>
+
+                        <?php if (empty($invites)): ?>
+                            <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                                <i class="fas fa-ticket-alt" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 16px;"></i>
+                                <h3>No Invite Codes</h3>
+                                <p style="color: var(--text-muted);">Create an invite code to allow someone to register.</p>
+                            </div>
+                        <?php else: ?>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Uses</th>
+                                        <th>Expires</th>
+                                        <th>Note</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($invites as $invite):
+                                        $isValid = isInviteValid($invite);
+                                        $creator = getUser($invite['created_by']);
+                                    ?>
+                                        <tr style="<?= !$isValid ? 'opacity: 0.6;' : '' ?>">
+                                            <td>
+                                                <code class="invite-code" style="font-family: monospace; font-size: 1.1rem; color: var(--neon-cyan); cursor: pointer;"
+                                                      onclick="copyToClipboard('<?= $invite['code'] ?>')" title="Click to copy code">
+                                                    <?= $invite['code'] ?>
+                                                </code>
+                                                <button type="button" class="btn btn-outline btn-sm" style="margin-left: 8px; padding: 4px 8px;"
+                                                        onclick="copyInviteLink('<?= $invite['code'] ?>')" title="Copy registration link">
+                                                    <i class="fas fa-link"></i>
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <?= $invite['uses'] ?> / <?= $invite['max_uses'] > 0 ? $invite['max_uses'] : '∞' ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($invite['expires_at']): ?>
+                                                    <?php if (strtotime($invite['expires_at']) < time()): ?>
+                                                        <span style="color: var(--error);">Expired</span>
+                                                    <?php else: ?>
+                                                        <?= date('M j, Y', strtotime($invite['expires_at'])) ?>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span style="color: var(--text-muted);">Never</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td style="color: var(--text-secondary);">
+                                                <?= $invite['note'] ? sanitize($invite['note']) : '-' ?>
+                                            </td>
+                                            <td>
+                                                <?php if (!$invite['active']): ?>
+                                                    <span class="status-badge status-inactive">Inactive</span>
+                                                <?php elseif ($invite['max_uses'] > 0 && $invite['uses'] >= $invite['max_uses']): ?>
+                                                    <span class="status-badge status-used">Used Up</span>
+                                                <?php elseif ($invite['expires_at'] && strtotime($invite['expires_at']) < time()): ?>
+                                                    <span class="status-badge status-expired">Expired</span>
+                                                <?php else: ?>
+                                                    <span class="status-badge status-active">Active</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="actions">
+                                                <form method="POST" style="display: inline;">
+                                                    <input type="hidden" name="action" value="toggle_invite">
+                                                    <input type="hidden" name="id" value="<?= $invite['id'] ?>">
+                                                    <button type="submit" class="btn btn-secondary btn-sm"
+                                                            title="<?= $invite['active'] ? 'Deactivate' : 'Activate' ?>">
+                                                        <i class="fas fa-<?= $invite['active'] ? 'pause' : 'play' ?>"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="POST" style="display: inline;"
+                                                      onsubmit="return confirm('Delete this invite code?');">
+                                                    <input type="hidden" name="action" value="delete_invite">
+                                                    <input type="hidden" name="id" value="<?= $invite['id'] ?>">
+                                                    <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </main>
             </div>
@@ -636,6 +1021,42 @@ $faIcons = [
         </div>
     </div>
 
+    <!-- Create Invite Modal -->
+    <div class="modal-overlay" id="create-invite-modal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Create Invite Code</h2>
+                <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <form method="POST" action="admin.php?section=invites">
+                <input type="hidden" name="action" value="create_invite">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Max Uses</label>
+                        <input type="number" name="max_uses" class="form-input" value="1" min="1" max="100">
+                        <div class="form-hint">How many times this code can be used (1 = single use)</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Expires In (days)</label>
+                        <input type="number" name="expires_days" class="form-input" value="7" min="0" max="365">
+                        <div class="form-hint">Leave at 0 for no expiration</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Note (optional)</label>
+                        <input type="text" name="note" class="form-input" placeholder="e.g., For John">
+                        <div class="form-hint">Private note to remember who this is for</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="Modal.hide('create-invite-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-ticket-alt"></i> Create Code
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
@@ -645,7 +1066,7 @@ $faIcons = [
                     <a href="browse.php">Browse</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
+                    &copy; <?= date('Y') ?> <?= getSiteName() ?>. A community-driven platform.
                 </div>
             </div>
         </div>
@@ -711,6 +1132,40 @@ $faIcons = [
             }
         }
 
+        // Copy to clipboard function for invite codes
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                Toast.success('Invite code copied to clipboard!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                Toast.success('Invite code copied to clipboard!');
+            });
+        }
+
+        // Copy invite link with code
+        function copyInviteLink(code) {
+            const baseUrl = window.location.origin + window.location.pathname.replace('admin.php', 'login.php');
+            const inviteUrl = baseUrl + '?register=1&code=' + code;
+            navigator.clipboard.writeText(inviteUrl).then(() => {
+                Toast.success('Invite link copied! Share it with your invitee.');
+            }).catch(() => {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = inviteUrl;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                Toast.success('Invite link copied! Share it with your invitee.');
+            });
+        }
+
         // User search functionality
         document.addEventListener('DOMContentLoaded', function() {
             const userSearch = document.getElementById('user-search');
@@ -755,6 +1210,23 @@ $faIcons = [
             if (categoryFilter) {
                 categoryFilter.addEventListener('change', filterModels);
             }
+
+            // Settings tabs functionality
+            const settingsTabs = document.querySelectorAll('.settings-tab');
+            const settingsPanels = document.querySelectorAll('.settings-panel');
+
+            settingsTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const targetTab = this.dataset.tab;
+
+                    // Update active states
+                    settingsTabs.forEach(t => t.classList.remove('active'));
+                    settingsPanels.forEach(p => p.classList.remove('active'));
+
+                    this.classList.add('active');
+                    document.getElementById('settings-' + targetTab).classList.add('active');
+                });
+            });
         });
     </script>
 </body>

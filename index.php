@@ -6,9 +6,17 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 
+// Check maintenance mode (allow admins to bypass)
+if (isMaintenanceMode() && !isAdmin()) {
+    $maintenanceMessage = setting('maintenance_message', 'We are currently performing maintenance. Please check back soon.');
+    include __DIR__ . '/includes/maintenance.php';
+    exit;
+}
+
 // Pagination for recent models
 $page = max(1, intval($_GET['page'] ?? 1));
-$limit = 12;
+$limit = (int)setting('items_per_page', 12);
+if ($limit <= 0) $limit = 12; // Prevent division by zero
 
 $categories = getCategories();
 
@@ -39,8 +47,9 @@ foreach ($trendingModels as $index => $model) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= SITE_NAME ?> - <?= SITE_TAGLINE ?></title>
-    
+    <meta name="description" content="<?= sanitize(setting('site_description', 'A community-driven platform for sharing 3D printable models')) ?>">
+    <title><?= getSiteName() ?> - <?= setting('site_tagline', SITE_TAGLINE) ?></title>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,7 +67,7 @@ foreach ($trendingModels as $index => $model) {
         <div class="container">
             <a href="index.php" class="logo">
                 <div class="logo-icon"><i class="fas fa-cube"></i></div>
-                <span><?= SITE_NAME ?></span>
+                <span><?= getSiteName() ?></span>
             </a>
             
             <div class="nav-links">
@@ -99,10 +108,10 @@ foreach ($trendingModels as $index => $model) {
         <section class="hero">
             <div class="container">
                 <h1 class="hero-title">
-                    <span class="text-gradient"><?= SITE_NAME ?></span>
+                    <span class="text-gradient"><?= getSiteName() ?></span>
                 </h1>
                 <p class="hero-subtitle">
-                    Discover, download, and share high-quality 3D models for your community.
+                    <?= sanitize(setting('site_description', 'Discover, download, and share high-quality 3D models for your community.')) ?>
                 </p>
                 
                 <!-- Search Bar -->
@@ -199,9 +208,9 @@ foreach ($trendingModels as $index => $model) {
                                     <a href="profile.php?id=<?= $tm['user_id'] ?>"><?= sanitize($tm['author']) ?></a>
                                 </div>
                                 <div class="model-card-meta">
-                                    <span><i class="fas fa-download"></i> <?= $tm['downloads'] ?? 0 ?></span>
-                                    <span><i class="fas fa-heart"></i> <?= $tm['likes'] ?? 0 ?></span>
-                                    <span><i class="fas fa-eye"></i> <?= $tm['views'] ?? 0 ?></span>
+                                    <?php if (setting('show_download_count', true)): ?><span><i class="fas fa-download"></i> <?= $tm['downloads'] ?? 0 ?></span><?php endif; ?>
+                                    <?php if (setting('show_like_count', true)): ?><span><i class="fas fa-heart"></i> <?= $tm['likes'] ?? 0 ?></span><?php endif; ?>
+                                    <?php if (setting('show_view_count', true)): ?><span><i class="fas fa-eye"></i> <?= $tm['views'] ?? 0 ?></span><?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -323,8 +332,8 @@ foreach ($trendingModels as $index => $model) {
                                     <a href="profile.php?id=<?= $model['user_id'] ?>"><?= sanitize($model['author']) ?></a>
                                 </div>
                                 <div class="model-card-meta">
-                                    <span><i class="fas fa-download"></i> <?= $model['downloads'] ?? 0 ?></span>
-                                    <span><i class="fas fa-heart"></i> <?= $model['likes'] ?? 0 ?></span>
+                                    <?php if (setting('show_download_count', true)): ?><span><i class="fas fa-download"></i> <?= $model['downloads'] ?? 0 ?></span><?php endif; ?>
+                                    <?php if (setting('show_like_count', true)): ?><span><i class="fas fa-heart"></i> <?= $model['likes'] ?? 0 ?></span><?php endif; ?>
                                     <span><i class="fas fa-clock"></i> <?= timeAgo($model['created_at']) ?></span>
                                 </div>
                             </div>
@@ -374,7 +383,7 @@ foreach ($trendingModels as $index => $model) {
                     <a href="login.php">Sign In</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
+                    &copy; <?= date('Y') ?> <?= getSiteName() ?>. A community-driven platform.
                 </div>
             </div>
         </div>

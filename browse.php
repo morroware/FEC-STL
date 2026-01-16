@@ -6,12 +6,20 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 
+// Check maintenance mode (allow admins to bypass)
+if (isMaintenanceMode() && !isAdmin()) {
+    $maintenanceMessage = setting('maintenance_message', 'We are currently performing maintenance. Please check back soon.');
+    include __DIR__ . '/includes/maintenance.php';
+    exit;
+}
+
 // Get parameters
 $query = $_GET['q'] ?? '';
 $categoryFilter = $_GET['category'] ?? '';
-$sort = $_GET['sort'] ?? 'newest';
+$sort = $_GET['sort'] ?? setting('default_sort', 'newest');
 $page = max(1, intval($_GET['page'] ?? 1));
-$limit = 16;
+$limit = (int)setting('items_per_page', 12);
+if ($limit <= 0) $limit = 12; // Prevent division by zero
 
 // Get data
 $categories = getCategories();
@@ -44,7 +52,7 @@ if ($query) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= sanitize($pageTitle) ?> - <?= SITE_NAME ?></title>
+    <title><?= sanitize($pageTitle) ?> - <?= getSiteName() ?></title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,7 +66,7 @@ if ($query) {
         <div class="container">
             <a href="index.php" class="logo">
                 <div class="logo-icon"><i class="fas fa-cube"></i></div>
-                <span><?= SITE_NAME ?></span>
+                <span><?= getSiteName() ?></span>
             </a>
             
             <div class="nav-links">
@@ -229,8 +237,8 @@ if ($query) {
                                     <a href="profile.php?id=<?= $model['user_id'] ?>"><?= sanitize($model['author']) ?></a>
                                 </div>
                                 <div class="model-card-meta">
-                                    <span><i class="fas fa-download"></i> <?= $model['downloads'] ?? 0 ?></span>
-                                    <span><i class="fas fa-heart"></i> <?= $model['likes'] ?? 0 ?></span>
+                                    <?php if (setting('show_download_count', true)): ?><span><i class="fas fa-download"></i> <?= $model['downloads'] ?? 0 ?></span><?php endif; ?>
+                                    <?php if (setting('show_like_count', true)): ?><span><i class="fas fa-heart"></i> <?= $model['likes'] ?? 0 ?></span><?php endif; ?>
                                     <span><i class="fas fa-clock"></i> <?= timeAgo($model['created_at']) ?></span>
                                 </div>
                             </div>
@@ -280,7 +288,7 @@ if ($query) {
                     <a href="login.php">Sign In</a>
                 </div>
                 <div class="footer-copyright">
-                    &copy; <?= date('Y') ?> <?= SITE_NAME ?>. A community-driven platform.
+                    &copy; <?= date('Y') ?> <?= getSiteName() ?>. A community-driven platform.
                 </div>
             </div>
         </div>
