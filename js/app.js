@@ -631,8 +631,16 @@ class ThumbnailViewer {
 
         // Use settings from window.VIEWER_SETTINGS or fallback to defaults
         const settings = window.VIEWER_SETTINGS || {};
+
+        // Convert default color from hex string to integer
+        let defaultModelColor = 0x00f0ff; // fallback
+        if (settings.defaultColor) {
+            defaultModelColor = parseInt(settings.defaultColor.replace('#', '0x'));
+        }
+
         this.settings = {
             backgroundColor: settings.backgroundColor || 0x0a0a0f,
+            defaultModelColor: defaultModelColor,
             ambientLightColor: settings.ambientLightColor || 0xffffff,
             ambientLightIntensity: settings.ambientLightIntensity !== undefined ? settings.ambientLightIntensity : 0.6,
             keyLightColor: settings.keyLightColor || 0xffffff,
@@ -809,7 +817,7 @@ class ThumbnailViewer {
                     geometry.computeVertexNormals();
 
                     const material = new THREE.MeshPhysicalMaterial({
-                        color: 0x00f0ff,
+                        color: this.settings.defaultModelColor,
                         metalness: this.settings.materialMetalness,
                         roughness: this.settings.materialRoughness
                     });
@@ -848,7 +856,7 @@ class ThumbnailViewer {
         object.traverse((child) => {
             if (child.isMesh) {
                 child.material = new THREE.MeshPhysicalMaterial({
-                    color: 0x00f0ff,
+                    color: this.settings.defaultModelColor,
                     metalness: this.settings.materialMetalness,
                     roughness: this.settings.materialRoughness
                 });
