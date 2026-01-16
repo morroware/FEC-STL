@@ -118,11 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'save_settings':
-            // DEBUG - Remove after testing
-            echo "<pre>POST DATA:\n";
-            print_r($_POST);
-            echo "</pre>";
-
             $settingsToSave = [];
             $schema = getSettingsSchema();
 
@@ -141,13 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // DEBUG - Remove after testing
-            echo "<pre>SETTINGS TO SAVE:\n";
-            print_r($settingsToSave);
-            echo "</pre>";
-            // exit; // Uncomment to stop here
-
             if (setSettings($settingsToSave)) {
+                clearSettingsCache(); // Clear cache so new values are loaded
                 $success = 'Settings saved successfully';
             } else {
                 $error = 'Failed to save settings';

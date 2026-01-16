@@ -90,14 +90,26 @@ function verifyCsrf(string $token): bool {
 
 /**
  * Settings Helper - Get a site setting with fallback to default
+ * Pass $reset = true to clear the cache (after saving settings)
  */
-function setting(string $key, $default = null) {
+function setting(string $key, $default = null, bool $reset = false) {
     static $settings = null;
+    if ($reset) {
+        $settings = null;
+        return null;
+    }
     if ($settings === null) {
         require_once __DIR__ . '/db.php';
         $settings = getSettings();
     }
     return $settings[$key] ?? $default;
+}
+
+/**
+ * Clear the settings cache (call after saving settings)
+ */
+function clearSettingsCache(): void {
+    setting('', null, true);
 }
 
 /**
