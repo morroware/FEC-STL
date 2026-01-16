@@ -237,8 +237,8 @@ if ($query) {
                                     <a href="profile.php?id=<?= $model['user_id'] ?>"><?= sanitize($model['author']) ?></a>
                                 </div>
                                 <div class="model-card-meta">
-                                    <span><i class="fas fa-download"></i> <?= $model['downloads'] ?? 0 ?></span>
-                                    <span><i class="fas fa-heart"></i> <?= $model['likes'] ?? 0 ?></span>
+                                    <?php if (setting('show_download_count', true)): ?><span><i class="fas fa-download"></i> <?= $model['downloads'] ?? 0 ?></span><?php endif; ?>
+                                    <?php if (setting('show_like_count', true)): ?><span><i class="fas fa-heart"></i> <?= $model['likes'] ?? 0 ?></span><?php endif; ?>
                                     <span><i class="fas fa-clock"></i> <?= timeAgo($model['created_at']) ?></span>
                                 </div>
                             </div>

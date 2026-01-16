@@ -377,53 +377,63 @@ foreach ($relatedModels as $index => $rm) {
                     
                     <!-- Stats -->
                     <div class="model-stats">
+                        <?php if (setting('show_download_count', true)): ?>
                         <div class="model-stat">
                             <div class="model-stat-value"><?= number_format($model['downloads'] ?? 0) ?></div>
                             <div class="model-stat-label">Downloads</div>
                         </div>
+                        <?php endif; ?>
+                        <?php if (setting('show_like_count', true)): ?>
                         <div class="model-stat">
                             <div class="model-stat-value"><?= number_format($model['likes'] ?? 0) ?></div>
                             <div class="model-stat-label">Likes</div>
                         </div>
+                        <?php endif; ?>
+                        <?php if (setting('show_view_count', true)): ?>
                         <div class="model-stat">
                             <div class="model-stat-value"><?= number_format($model['views'] ?? 0) ?></div>
                             <div class="model-stat-label">Views</div>
                         </div>
+                        <?php endif; ?>
                     </div>
                     
                     <!-- Actions -->
                     <div class="model-actions">
-                        <?php if (isLoggedIn()): ?>
-                            <?php if ($fileCount > 1): ?>
-                            <button class="btn btn-primary btn-lg" onclick="downloadAllFiles()" style="width: 100%;">
-                                <i class="fas fa-file-archive"></i> Download All (<?= $fileCount ?> files)
-                            </button>
-                            <div class="download-individual" style="margin-top: 8px;">
-                                <span style="font-size: 0.85rem; color: var(--text-muted);">Or download individually:</span>
-                                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
-                                    <?php foreach ($files as $idx => $f): ?>
-                                    <button class="btn btn-outline btn-sm" onclick="downloadSingleFile(<?= $idx ?>)" title="<?= sanitize($f['original_name']) ?>">
-                                        <i class="fas fa-download"></i> <?= sanitize(substr($f['original_name'], 0, 12)) ?><?= strlen($f['original_name']) > 12 ? '...' : '' ?>
-                                    </button>
-                                    <?php endforeach; ?>
+                        <?php if (setting('enable_downloads', true)): ?>
+                            <?php if (isLoggedIn()): ?>
+                                <?php if ($fileCount > 1): ?>
+                                <button class="btn btn-primary btn-lg" onclick="downloadAllFiles()" style="width: 100%;">
+                                    <i class="fas fa-file-archive"></i> Download All (<?= $fileCount ?> files)
+                                </button>
+                                <div class="download-individual" style="margin-top: 8px;">
+                                    <span style="font-size: 0.85rem; color: var(--text-muted);">Or download individually:</span>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                                        <?php foreach ($files as $idx => $f): ?>
+                                        <button class="btn btn-outline btn-sm" onclick="downloadSingleFile(<?= $idx ?>)" title="<?= sanitize($f['original_name']) ?>">
+                                            <i class="fas fa-download"></i> <?= sanitize(substr($f['original_name'], 0, 12)) ?><?= strlen($f['original_name']) > 12 ? '...' : '' ?>
+                                        </button>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
-                            </div>
+                                <?php else: ?>
+                                <button class="btn btn-primary btn-lg" onclick="downloadModel('<?= $modelId ?>')" style="width: 100%;">
+                                    <i class="fas fa-download"></i> Download Model
+                                </button>
+                                <?php endif; ?>
                             <?php else: ?>
-                            <button class="btn btn-primary btn-lg" onclick="downloadModel('<?= $modelId ?>')" style="width: 100%;">
-                                <i class="fas fa-download"></i> Download Model
-                            </button>
+                                <a href="login.php" class="btn btn-primary btn-lg" style="width: 100%; text-align: center;">
+                                    <i class="fas fa-sign-in-alt"></i> Sign In to Download
+                                </a>
                             <?php endif; ?>
-                        <?php else: ?>
-                            <a href="login.php" class="btn btn-primary btn-lg" style="width: 100%; text-align: center;">
-                                <i class="fas fa-sign-in-alt"></i> Sign In to Download
-                            </a>
                         <?php endif; ?>
                         <div style="display: flex; gap: 12px; margin-top: 12px;">
+                            <?php if (setting('enable_likes', true)): ?>
                             <button class="btn btn-secondary <?= $isLiked ? 'liked' : '' ?>" onclick="likeModel('<?= $modelId ?>')" id="like-btn" style="flex: 1;" <?= $isLiked ? 'disabled' : '' ?>>
                                 <i class="fas fa-heart"></i>
                                 <span id="like-count"><?= $model['likes'] ?? 0 ?></span>
                             </button>
-                            <?php if (isLoggedIn()): ?>
+                            <?php endif; ?>
+                            <?php if (setting('enable_favorites', true) && isLoggedIn()): ?>
                                 <button class="btn btn-secondary <?= $isFavorited ? 'active' : '' ?>"
                                         onclick="favoriteModel('<?= $modelId ?>')" id="fav-btn" style="flex: 1;"
                                         style="<?= $isFavorited ? 'border-color: var(--neon-magenta); color: var(--neon-magenta);' : '' ?>">
@@ -774,6 +784,14 @@ foreach ($relatedModels as $index => $rm) {
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/app.js"></script>
     <script>
+        // 3D Viewer settings from admin panel
+        window.VIEWER_SETTINGS = {
+            defaultColor: '<?= setting('default_model_color', '#00f0ff') ?>',
+            autoRotate: <?= setting('enable_auto_rotate', false) ? 'true' : 'false' ?>,
+            showWireframeToggle: <?= setting('enable_wireframe_toggle', true) ? 'true' : 'false' ?>,
+            showGrid: <?= setting('enable_grid', true) ? 'true' : 'false' ?>
+        };
+
         // Unified Gallery Controller
         const GalleryController = {
             gallery: null,
@@ -782,7 +800,7 @@ foreach ($relatedModels as $index => $rm) {
             viewers: {},  // Store 3D viewers by slide index
             currentIndex: 0,
             totalSlides: 0,
-            currentModelColor: 0x00f0ff,
+            currentModelColor: parseInt(window.VIEWER_SETTINGS.defaultColor.replace('#', '0x')),
             fullscreenViewer: null,
 
             init() {
@@ -979,7 +997,8 @@ foreach ($relatedModels as $index => $rm) {
 
                 const viewer = new ModelViewer(viewerContainer, {
                     modelColor: this.currentModelColor,
-                    autoRotate: true
+                    autoRotate: window.VIEWER_SETTINGS.autoRotate,
+                    showGrid: window.VIEWER_SETTINGS.showGrid
                 });
 
                 viewer.loadModel(modelUrl).then(() => {
