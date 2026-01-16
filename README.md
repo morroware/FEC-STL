@@ -625,53 +625,6 @@ When MySQL is not configured, data is stored in JSON files:
 7. **Access Control**: Role-based authorization, ownership verification
 8. **Timing-Safe Comparison**: `hash_equals()` for token verification
 
-### Known Limitations
-1. No HTTPS enforcement (must be configured at web server level)
-2. No rate limiting (implement at reverse proxy or application level)
-3. No email verification (planned feature)
-4. Basic password requirements (6 characters minimum)
-5. No two-factor authentication
-6. No password reset mechanism
-7. No account lockout after failed logins
-8. Session IDs not regenerated after login
-
-### Production Hardening Checklist
-
-**Critical (Do Before Production)**
-- [ ] Enable HTTPS and enforce SSL/TLS
-- [ ] Change default admin password
-- [ ] Configure strong database credentials
-- [ ] Set restrictive file permissions (750/640)
-- [ ] Remove or move setup scripts outside web root
-- [ ] Configure CSP headers
-- [ ] Implement rate limiting (fail2ban, nginx limit_req, etc.)
-- [ ] Enable error logging, disable display_errors
-- [ ] Configure session security (httponly, secure, samesite cookies)
-- [ ] Review all SQL queries for injection vulnerabilities
-- [ ] Implement backup strategy
-
-**Recommended**
-- [ ] Enable email verification
-- [ ] Implement password reset flow
-- [ ] Add account lockout after N failed logins
-- [ ] Configure CDN for static assets
-- [ ] Set up monitoring (uptime, errors, performance)
-- [ ] Implement CAPTCHA on registration
-- [ ] Add file virus scanning
-- [ ] Configure automated backups
-- [ ] Set up log aggregation
-- [ ] Implement MIME type verification for uploads
-
-**Optional Enhancements**
-- [ ] Add two-factor authentication
-- [ ] Implement OAuth providers (Google, GitHub)
-- [ ] Add API rate limiting per user
-- [ ] Configure Redis for session storage
-- [ ] Implement job queue for file processing
-- [ ] Add full-text search with Elasticsearch
-- [ ] Configure CDN for uploads
-- [ ] Implement image optimization pipeline
-
 ## Configuration
 
 ### PHP Configuration
