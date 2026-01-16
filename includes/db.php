@@ -860,31 +860,42 @@ if (USE_MYSQL) {
      * Settings Operations (MySQL)
      */
     function getSettings(): array {
-        $conn = getDbConnection();
+        try {
+            $conn = getDbConnection();
 
-        // Check if settings table exists
-        $result = $conn->query("SHOW TABLES LIKE 'settings'");
-        if ($result->num_rows === 0) {
-            // Create settings table
-            $conn->query("
-                CREATE TABLE IF NOT EXISTS settings (
-                    setting_key VARCHAR(100) PRIMARY KEY,
-                    setting_value TEXT,
-                    setting_type VARCHAR(20) DEFAULT 'string',
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                )
-            ");
-            // Initialize with defaults
-            initializeSettings();
+            // Check if settings table exists
+            $result = $conn->query("SHOW TABLES LIKE 'settings'");
+            if ($result->num_rows === 0) {
+                // Create settings table
+                $conn->query("
+                    CREATE TABLE IF NOT EXISTS settings (
+                        setting_key VARCHAR(100) PRIMARY KEY,
+                        setting_value TEXT,
+                        setting_type VARCHAR(20) DEFAULT 'string',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    )
+                ");
+                // Initialize with defaults
+                initializeSettings();
+            }
+
+            $result = $conn->query("SELECT * FROM settings");
+            if (!$result) {
+                return getDefaultSettings();
+            }
+
+            $settings = [];
+            while ($row = $result->fetch_assoc()) {
+                $value = $row['setting_value'] ?? null;
+                $type = $row['setting_type'] ?? 'string';
+                $settings[$row['setting_key']] = castSettingValue($value, $type);
+            }
+
+            return array_merge(getDefaultSettings(), $settings);
+        } catch (Exception $e) {
+            error_log("Error loading settings: " . $e->getMessage());
+            return getDefaultSettings();
         }
-
-        $result = $conn->query("SELECT * FROM settings");
-        $settings = [];
-        while ($row = $result->fetch_assoc()) {
-            $settings[$row['setting_key']] = castSettingValue($row['setting_value'], $row['setting_type']);
-        }
-
-        return array_merge(getDefaultSettings(), $settings);
     }
 
     function getSetting(string $key, $default = null) {
@@ -893,17 +904,26 @@ if (USE_MYSQL) {
     }
 
     function setSetting(string $key, $value): bool {
-        $conn = getDbConnection();
-        $type = getSettingType($value);
-        $stringValue = convertSettingToString($value, $type);
+        try {
+            $conn = getDbConnection();
+            $type = getSettingType($value);
+            $stringValue = convertSettingToString($value, $type);
 
-        $stmt = $conn->prepare("
-            INSERT INTO settings (setting_key, setting_value, setting_type)
-            VALUES (?, ?, ?)
-            ON DUPLICATE KEY UPDATE setting_value = ?, setting_type = ?
-        ");
-        $stmt->bind_param("sssss", $key, $stringValue, $type, $stringValue, $type);
-        return $stmt->execute();
+            $stmt = $conn->prepare("
+                INSERT INTO settings (setting_key, setting_value, setting_type)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE setting_value = ?, setting_type = ?
+            ");
+            if (!$stmt) {
+                error_log("Error preparing settings statement: " . $conn->error);
+                return false;
+            }
+            $stmt->bind_param("sssss", $key, $stringValue, $type, $stringValue, $type);
+            return $stmt->execute();
+        } catch (Exception $e) {
+            error_log("Error saving setting '$key': " . $e->getMessage());
+            return false;
+        }
     }
 
     function setSettings(array $settings): bool {
@@ -1899,7 +1919,10 @@ function convertSettingToString($value, string $type): string {
     }
 }
 
-function castSettingValue(string $value, string $type) {
+function castSettingValue(?string $value, string $type) {
+    if ($value === null) {
+        return null;
+    }
     switch ($type) {
         case 'boolean':
             return $value === '1' || $value === 'true';
