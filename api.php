@@ -1088,7 +1088,7 @@ switch ($action) {
         // Generate unique filename
         $ext = '.3mf';
         $filename = generateId() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', pathinfo($file['name'], PATHINFO_FILENAME)) . $ext;
-        $filepath = UPLOAD_DIR . 'profiles/' . $filename;
+        $filepath = UPLOADS_DIR . 'profiles/' . $filename;
 
         // Move file
         if (!move_uploaded_file($file['tmp_name'], $filepath)) {
@@ -1198,7 +1198,7 @@ switch ($action) {
             jsonResponse(['success' => false, 'error' => 'Profile not found'], 404);
         }
 
-        $filepath = UPLOAD_DIR . 'profiles/' . $profile['filename'];
+        $filepath = UPLOADS_DIR . 'profiles/' . $profile['filename'];
         if (!file_exists($filepath)) {
             jsonResponse(['success' => false, 'error' => 'Profile file not found'], 404);
         }
