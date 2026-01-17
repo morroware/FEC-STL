@@ -1730,7 +1730,6 @@ foreach ($relatedModels as $index => $rm) {
 
         let allPrinters = [];
         let allFilaments = [];
-        const modelId = '<?= $modelId ?>';
 
         // Load printers and filaments for filters
         async function loadPrintersAndFilaments() {
