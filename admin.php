@@ -313,8 +313,18 @@ $faIcons = [
                                 <i class="fas fa-ticket-alt"></i> Invites
                             </a>
                         </li>
+                        <li>
+                            <a href="admin.php?section=printers" class="<?= $section === 'printers' ? 'active' : '' ?>">
+                                <i class="fas fa-print"></i> Printers
+                            </a>
+                        </li>
+                        <li>
+                            <a href="admin.php?section=filaments" class="<?= $section === 'filaments' ? 'active' : '' ?>">
+                                <i class="fas fa-fill-drip"></i> Filaments
+                            </a>
+                        </li>
                     </ul>
-                    
+
                     <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
                         <a href="index.php" style="color: var(--text-muted); font-size: 0.9rem;">
                             <i class="fas fa-arrow-left"></i> Back to Site
@@ -877,6 +887,138 @@ $faIcons = [
                                 </tbody>
                             </table>
                         <?php endif; ?>
+
+                    <?php elseif ($section === 'printers'): ?>
+                        <!-- Printers Management -->
+                        <div class="admin-header">
+                            <h2>Printers Management</h2>
+                            <button class="btn btn-primary" onclick="Modal.show('add-printer-modal')">
+                                <i class="fas fa-plus"></i> Add Printer
+                            </button>
+                        </div>
+
+                        <?php
+                        $printers = getPrinters();
+                        ?>
+
+                        <?php if (empty($printers)): ?>
+                            <div class="empty-state">
+                                <i class="fas fa-print fa-3x"></i>
+                                <p>No printers defined yet</p>
+                                <button class="btn btn-primary" onclick="Modal.show('add-printer-modal')">
+                                    <i class="fas fa-plus"></i> Add First Printer
+                                </button>
+                            </div>
+                        <?php else: ?>
+                            <div class="card" style="padding: 0;">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Manufacturer</th>
+                                            <th>Build Volume</th>
+                                            <th>Nozzle</th>
+                                            <th>Description</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($printers as $printer): ?>
+                                            <tr>
+                                                <td style="font-weight: 600;"><?= sanitize($printer['name']) ?></td>
+                                                <td><?= sanitize($printer['manufacturer'] ?? 'N/A') ?></td>
+                                                <td><?= $printer['build_volume_x'] ?>×<?= $printer['build_volume_y'] ?>×<?= $printer['build_volume_z'] ?>mm</td>
+                                                <td><?= $printer['nozzle_diameter'] ?>mm</td>
+                                                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    <?= sanitize($printer['description'] ?? '') ?>
+                                                </td>
+                                                <td class="actions">
+                                                    <button class="btn btn-secondary btn-sm" onclick="editPrinter('<?= $printer['id'] ?>')">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-danger btn-sm" onclick="deletePrinter('<?= $printer['id'] ?>', '<?= sanitize($printer['name']) ?>')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+
+                    <?php elseif ($section === 'filaments'): ?>
+                        <!-- Filaments Management -->
+                        <div class="admin-header">
+                            <h2>Filaments Management</h2>
+                            <button class="btn btn-primary" onclick="Modal.show('add-filament-modal')">
+                                <i class="fas fa-plus"></i> Add Filament
+                            </button>
+                        </div>
+
+                        <?php
+                        $filaments = getFilaments();
+                        // Group by material type
+                        $groupedFilaments = [];
+                        foreach ($filaments as $filament) {
+                            $type = $filament['material_type'];
+                            if (!isset($groupedFilaments[$type])) {
+                                $groupedFilaments[$type] = [];
+                            }
+                            $groupedFilaments[$type][] = $filament;
+                        }
+                        ksort($groupedFilaments);
+                        ?>
+
+                        <?php if (empty($filaments)): ?>
+                            <div class="empty-state">
+                                <i class="fas fa-fill-drip fa-3x"></i>
+                                <p>No filaments defined yet</p>
+                                <button class="btn btn-primary" onclick="Modal.show('add-filament-modal')">
+                                    <i class="fas fa-plus"></i> Add First Filament
+                                </button>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($groupedFilaments as $type => $typeFilaments): ?>
+                                <div class="card" style="margin-bottom: 24px;">
+                                    <h3 style="margin-bottom: 16px; padding: 16px; background: var(--bg-secondary); border-radius: 8px 8px 0 0;">
+                                        <?= sanitize($type) ?> Filaments
+                                    </h3>
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Manufacturer</th>
+                                                <th>Color</th>
+                                                <th>Description</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($typeFilaments as $filament): ?>
+                                                <tr>
+                                                    <td style="font-weight: 600;"><?= sanitize($filament['name']) ?></td>
+                                                    <td><?= sanitize($filament['manufacturer'] ?? 'Generic') ?></td>
+                                                    <td><?= sanitize($filament['color'] ?? 'Various') ?></td>
+                                                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                        <?= sanitize($filament['description'] ?? '') ?>
+                                                    </td>
+                                                    <td class="actions">
+                                                        <button class="btn btn-secondary btn-sm" onclick="editFilament('<?= $filament['id'] ?>')">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn btn-danger btn-sm" onclick="deleteFilament('<?= $filament['id'] ?>', '<?= sanitize($filament['name']) ?>')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
                     <?php endif; ?>
                 </main>
             </div>
@@ -1076,6 +1218,178 @@ $faIcons = [
     </footer>
 
     <script src="js/app.js"></script>
+    <!-- Add/Edit Printer Modals -->
+    <div class="modal-overlay" id="add-printer-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Add Printer</h2>
+                <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label required">Name</label>
+                    <input type="text" id="printer-name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Manufacturer</label>
+                    <input type="text" id="printer-manufacturer" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Build Volume (mm)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                        <input type="number" id="printer-volume-x" class="form-input" placeholder="X">
+                        <input type="number" id="printer-volume-y" class="form-input" placeholder="Y">
+                        <input type="number" id="printer-volume-z" class="form-input" placeholder="Z">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nozzle Diameter (mm)</label>
+                    <input type="number" step="0.01" id="printer-nozzle" class="form-input" value="0.4">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="printer-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="Modal.hide('add-printer-modal')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="savePrinter()">Add Printer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-printer-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Edit Printer</h2>
+                <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-printer-id">
+                <div class="form-group">
+                    <label class="form-label required">Name</label>
+                    <input type="text" id="edit-printer-name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Manufacturer</label>
+                    <input type="text" id="edit-printer-manufacturer" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Build Volume (mm)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                        <input type="number" id="edit-printer-volume-x" class="form-input" placeholder="X">
+                        <input type="number" id="edit-printer-volume-y" class="form-input" placeholder="Y">
+                        <input type="number" id="edit-printer-volume-z" class="form-input" placeholder="Z">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nozzle Diameter (mm)</label>
+                    <input type="number" step="0.01" id="edit-printer-nozzle" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="edit-printer-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="Modal.hide('edit-printer-modal')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updatePrinter()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Filament Modals -->
+    <div class="modal-overlay" id="add-filament-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Add Filament</h2>
+                <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label required">Name</label>
+                    <input type="text" id="filament-name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Material Type</label>
+                    <select id="filament-material-type" class="form-select" required>
+                        <option value="">Select Material</option>
+                        <option value="PLA">PLA</option>
+                        <option value="PETG">PETG</option>
+                        <option value="ABS">ABS</option>
+                        <option value="TPU">TPU</option>
+                        <option value="ASA">ASA</option>
+                        <option value="Nylon">Nylon</option>
+                        <option value="PC">Polycarbonate</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Manufacturer</label>
+                    <input type="text" id="filament-manufacturer" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <input type="text" id="filament-color" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="filament-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="Modal.hide('add-filament-modal')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveFilament()">Add Filament</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-filament-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Edit Filament</h2>
+                <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-filament-id">
+                <div class="form-group">
+                    <label class="form-label required">Name</label>
+                    <input type="text" id="edit-filament-name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Material Type</label>
+                    <select id="edit-filament-material-type" class="form-select" required>
+                        <option value="">Select Material</option>
+                        <option value="PLA">PLA</option>
+                        <option value="PETG">PETG</option>
+                        <option value="ABS">ABS</option>
+                        <option value="TPU">TPU</option>
+                        <option value="ASA">ASA</option>
+                        <option value="Nylon">Nylon</option>
+                        <option value="PC">Polycarbonate</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Manufacturer</label>
+                    <input type="text" id="edit-filament-manufacturer" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <input type="text" id="edit-filament-color" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="edit-filament-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="Modal.hide('edit-filament-modal')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updateFilament()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Category edit
         function editCategory(id, name, icon, description) {
@@ -1231,6 +1545,198 @@ $faIcons = [
                 });
             });
         });
+
+        // =================================================================
+        // PRINTER MANAGEMENT
+        // =================================================================
+
+        async function savePrinter() {
+            const data = new FormData();
+            data.append('action', 'create_printer');
+            data.append('name', document.getElementById('printer-name').value);
+            data.append('manufacturer', document.getElementById('printer-manufacturer').value);
+            data.append('build_volume_x', document.getElementById('printer-volume-x').value);
+            data.append('build_volume_y', document.getElementById('printer-volume-y').value);
+            data.append('build_volume_z', document.getElementById('printer-volume-z').value);
+            data.append('nozzle_diameter', document.getElementById('printer-nozzle').value);
+            data.append('description', document.getElementById('printer-description').value);
+
+            try {
+                const res = await fetch('api.php', { method: 'POST', body: data });
+                const result = await res.json();
+                if (result.success) {
+                    Toast.success('Printer added successfully!');
+                    Modal.hide('add-printer-modal');
+                    location.reload();
+                } else {
+                    Toast.error(result.error || 'Failed to add printer');
+                }
+            } catch (err) {
+                Toast.error('Failed to add printer');
+            }
+        }
+
+        async function editPrinter(id) {
+            try {
+                const res = await fetch(`api.php?action=get_printer&id=${id}`);
+                const result = await res.json();
+                if (result.success) {
+                    const p = result.printer;
+                    document.getElementById('edit-printer-id').value = p.id;
+                    document.getElementById('edit-printer-name').value = p.name;
+                    document.getElementById('edit-printer-manufacturer').value = p.manufacturer || '';
+                    document.getElementById('edit-printer-volume-x').value = p.build_volume_x || '';
+                    document.getElementById('edit-printer-volume-y').value = p.build_volume_y || '';
+                    document.getElementById('edit-printer-volume-z').value = p.build_volume_z || '';
+                    document.getElementById('edit-printer-nozzle').value = p.nozzle_diameter || '';
+                    document.getElementById('edit-printer-description').value = p.description || '';
+                    Modal.show('edit-printer-modal');
+                }
+            } catch (err) {
+                Toast.error('Failed to load printer');
+            }
+        }
+
+        async function updatePrinter() {
+            const data = new FormData();
+            data.append('action', 'update_printer');
+            data.append('id', document.getElementById('edit-printer-id').value);
+            data.append('name', document.getElementById('edit-printer-name').value);
+            data.append('manufacturer', document.getElementById('edit-printer-manufacturer').value);
+            data.append('build_volume_x', document.getElementById('edit-printer-volume-x').value);
+            data.append('build_volume_y', document.getElementById('edit-printer-volume-y').value);
+            data.append('build_volume_z', document.getElementById('edit-printer-volume-z').value);
+            data.append('nozzle_diameter', document.getElementById('edit-printer-nozzle').value);
+            data.append('description', document.getElementById('edit-printer-description').value);
+
+            try {
+                const res = await fetch('api.php', { method: 'POST', body: data });
+                const result = await res.json();
+                if (result.success) {
+                    Toast.success('Printer updated successfully!');
+                    Modal.hide('edit-printer-modal');
+                    location.reload();
+                } else {
+                    Toast.error(result.error || 'Failed to update printer');
+                }
+            } catch (err) {
+                Toast.error('Failed to update printer');
+            }
+        }
+
+        async function deletePrinter(id, name) {
+            if (!confirm(`Delete printer "${name}"? This will remove it from all profiles.`)) return;
+
+            const data = new FormData();
+            data.append('action', 'delete_printer');
+            data.append('id', id);
+
+            try {
+                const res = await fetch('api.php', { method: 'POST', body: data });
+                const result = await res.json();
+                if (result.success) {
+                    Toast.success('Printer deleted successfully!');
+                    location.reload();
+                } else {
+                    Toast.error(result.error || 'Failed to delete printer');
+                }
+            } catch (err) {
+                Toast.error('Failed to delete printer');
+            }
+        }
+
+        // =================================================================
+        // FILAMENT MANAGEMENT
+        // =================================================================
+
+        async function saveFilament() {
+            const data = new FormData();
+            data.append('action', 'create_filament');
+            data.append('name', document.getElementById('filament-name').value);
+            data.append('material_type', document.getElementById('filament-material-type').value);
+            data.append('manufacturer', document.getElementById('filament-manufacturer').value);
+            data.append('color', document.getElementById('filament-color').value);
+            data.append('description', document.getElementById('filament-description').value);
+
+            try {
+                const res = await fetch('api.php', { method: 'POST', body: data });
+                const result = await res.json();
+                if (result.success) {
+                    Toast.success('Filament added successfully!');
+                    Modal.hide('add-filament-modal');
+                    location.reload();
+                } else {
+                    Toast.error(result.error || 'Failed to add filament');
+                }
+            } catch (err) {
+                Toast.error('Failed to add filament');
+            }
+        }
+
+        async function editFilament(id) {
+            try {
+                const res = await fetch(`api.php?action=get_filament&id=${id}`);
+                const result = await res.json();
+                if (result.success) {
+                    const f = result.filament;
+                    document.getElementById('edit-filament-id').value = f.id;
+                    document.getElementById('edit-filament-name').value = f.name;
+                    document.getElementById('edit-filament-material-type').value = f.material_type;
+                    document.getElementById('edit-filament-manufacturer').value = f.manufacturer || '';
+                    document.getElementById('edit-filament-color').value = f.color || '';
+                    document.getElementById('edit-filament-description').value = f.description || '';
+                    Modal.show('edit-filament-modal');
+                }
+            } catch (err) {
+                Toast.error('Failed to load filament');
+            }
+        }
+
+        async function updateFilament() {
+            const data = new FormData();
+            data.append('action', 'update_filament');
+            data.append('id', document.getElementById('edit-filament-id').value);
+            data.append('name', document.getElementById('edit-filament-name').value);
+            data.append('material_type', document.getElementById('edit-filament-material-type').value);
+            data.append('manufacturer', document.getElementById('edit-filament-manufacturer').value);
+            data.append('color', document.getElementById('edit-filament-color').value);
+            data.append('description', document.getElementById('edit-filament-description').value);
+
+            try {
+                const res = await fetch('api.php', { method: 'POST', body: data });
+                const result = await res.json();
+                if (result.success) {
+                    Toast.success('Filament updated successfully!');
+                    Modal.hide('edit-filament-modal');
+                    location.reload();
+                } else {
+                    Toast.error(result.error || 'Failed to update filament');
+                }
+            } catch (err) {
+                Toast.error('Failed to update filament');
+            }
+        }
+
+        async function deleteFilament(id, name) {
+            if (!confirm(`Delete filament "${name}"? This will remove it from all profiles.`)) return;
+
+            const data = new FormData();
+            data.append('action', 'delete_filament');
+            data.append('id', id);
+
+            try {
+                const res = await fetch('api.php', { method: 'POST', body: data });
+                const result = await res.json();
+                if (result.success) {
+                    Toast.success('Filament deleted successfully!');
+                    location.reload();
+                } else {
+                    Toast.error(result.error || 'Failed to delete filament');
+                }
+            } catch (err) {
+                Toast.error('Failed to delete filament');
+            }
+        }
     </script>
 </body>
 </html>
